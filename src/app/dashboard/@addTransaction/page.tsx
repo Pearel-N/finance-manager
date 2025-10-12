@@ -14,11 +14,9 @@ import { useState } from "react";
 import { addTransaction } from "@/services/transactions";
 
 export default function AddTransaction() {
-  const {
-    control,
-    handleSubmit,
-    reset,
-  } = useForm<z.infer<typeof transactionSchema>>({
+  const { control, handleSubmit, reset } = useForm<
+    z.infer<typeof transactionSchema>
+  >({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       amount: "0",
@@ -40,7 +38,7 @@ export default function AddTransaction() {
         date: new Date(),
         categoryId: data.category,
       });
-      
+
       // Reset the form after successful submission
       reset();
     } catch (error) {
@@ -51,8 +49,8 @@ export default function AddTransaction() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Card className="flex flex-col gap-4 p-4 w-fit h-fit">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex justify-center">
+      <Card className="flex flex-col gap-4 p-4 max-w-md w-full h-fit">
         <InputController
           type="number"
           placeholder="Amount"
