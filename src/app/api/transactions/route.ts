@@ -16,6 +16,9 @@ export async function GET() {
     },
     include: {
       category: true
+    },
+    orderBy: {
+      date: 'desc'
     }
   });
   return NextResponse.json(transactions);

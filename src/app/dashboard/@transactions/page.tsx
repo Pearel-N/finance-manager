@@ -16,6 +16,12 @@ import { formatTransactionDate } from "@/lib/date-utils";
 export default function Transactions() {
   const { data, isLoading, error } = useTransactions();
   console.log(data);
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+  if (error) {
+    return <div>Error: {error.message}</div>;
+  }
   return (
     <div>
       <Table>

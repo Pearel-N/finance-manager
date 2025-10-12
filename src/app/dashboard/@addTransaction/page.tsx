@@ -10,8 +10,7 @@ import { InputController } from "@/lib/ui/InputController";
 import { SwitchController } from "@/lib/ui/SwitchController";
 import { TextareaController } from "@/lib/ui/TextareaController";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { addTransaction } from "@/services/transactions";
+import { useAddTransaction } from "@/hooks/mutation/transactions";
 
 export default function AddTransaction() {
   const { control, handleSubmit, reset } = useForm<
@@ -26,12 +25,11 @@ export default function AddTransaction() {
     },
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const addTransactionMutation = useAddTransaction();
 
   const onSubmit = async (data: z.infer<typeof transactionSchema>) => {
-    setIsLoading(true);
     try {
-      await addTransaction({
+      await addTransactionMutation.mutateAsync({
         amount: Number(data.amount),
         note: data.note || null,
         type: data.isExpense ? "expense" : "income",
@@ -43,8 +41,6 @@ export default function AddTransaction() {
       reset();
     } catch (error) {
       console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -64,8 +60,8 @@ export default function AddTransaction() {
           name="category"
           render={({ field }) => <SelectCategory {...field} />}
         />
-        <Button disabled={isLoading} type="submit">
-          {isLoading ? "Adding..." : "Add Transaction"}
+        <Button disabled={addTransactionMutation.isPending} type="submit">
+          {addTransactionMutation.isPending ? "Adding..." : "Add Transaction"}
         </Button>
       </Card>
     </form>
