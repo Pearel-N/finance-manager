@@ -11,7 +11,7 @@ import { SwitchController } from "@/lib/ui/SwitchController";
 import { TextareaController } from "@/lib/ui/TextareaController";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { addTransaction } from "@/services/transations";
+import { addTransaction } from "@/services/transactions";
 
 export default function AddTransaction() {
   const {
