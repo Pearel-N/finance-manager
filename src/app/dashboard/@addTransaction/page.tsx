@@ -65,7 +65,14 @@ export default function AddTransaction() {
           disabled={addTransactionMutation.isPending || !isValid} 
           type="submit"
         >
-          {addTransactionMutation.isPending ? "Adding..." : "Add Transaction"}
+          {addTransactionMutation.isPending ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Adding...
+            </div>
+          ) : (
+            "Add Transaction"
+          )}
         </Button>
       </Card>
     </form>
