@@ -8,18 +8,24 @@ import { prisma } from '@/lib/prisma'
 
 async function createOrGetUser(email: string, supabaseUserId: string) {
   try {
-    // Try to find existing user first
+    // Try to find existing user first by email
     let user = await prisma.user.findUnique({
       where: { email }
     })
 
-    // If user doesn't exist, create them
+    // If user doesn't exist, create them with the Supabase user ID
     if (!user) {
       user = await prisma.user.create({
         data: {
-          id: supabaseUserId,
+          id: supabaseUserId, // Use Supabase user ID as our user ID
           email: email
         }
+      })
+    } else if (user.id !== supabaseUserId) {
+      // If user exists but with different ID, update the ID to match Supabase
+      user = await prisma.user.update({
+        where: { email },
+        data: { id: supabaseUserId }
       })
     }
 
@@ -43,7 +49,8 @@ export async function login(formData: FormData) {
   const { data: authData, error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    redirect('/error')
+    console.error('Login error:', error)
+    redirect('/auth/login?error=' + encodeURIComponent(error.message))
   }
 
   // Create or get user in our database
@@ -57,7 +64,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect('/dashboard')
 }
 
 export async function signup(formData: FormData) {
@@ -73,7 +80,8 @@ export async function signup(formData: FormData) {
   const { data: authData, error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/error')
+    console.error('Signup error:', error)
+    redirect('/auth/signup?error=' + encodeURIComponent(error.message))
   }
 
   // Create user in our database
@@ -87,5 +95,5 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect('/dashboard')
 }

@@ -12,6 +12,7 @@ model User {
   email       String       @unique
   transactions Transaction[]
   categories   Category[]
+  piggyBanks   PiggyBank[]
 }
 
 model Category {
@@ -23,13 +24,26 @@ model Category {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   amount      Float
-  type        String   // "income" | "expense"
-  date        DateTime @default(now())
+  type        String     // "income" | "expense"
+  date        DateTime   @default(now())
   note        String?
   categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
+  category    Category   @relation(fields: [categoryId], references: [id])
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+  piggyBankId String?
+  piggyBank   PiggyBank? @relation(fields: [piggyBankId], references: [id])
+}
+
+model PiggyBank {
+  id             String        @id @default(uuid())
+  name           String
+  goal           Float?
+  currentBalance Float         @default(0)
+  isDefault      Boolean       @default(false)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  transactions   Transaction[]
 }

@@ -6,6 +6,7 @@ export const transactionSchema = z
     isExpense: z.boolean(),
     note: z.string().min(1, "Note is required"),
     category: z.string().min(1, "Category is required"),
+    piggyBankId: z.string().optional(),
   })
   .refine(
     (data) => {

@@ -39,6 +39,8 @@ export async function POST(request: Request) {
     }
 
     const transaction = await request.json();
+    
+    // Create transaction
     const newTransaction = await prisma.transaction.create({
       data: {
         ...transaction,
@@ -46,6 +48,19 @@ export async function POST(request: Request) {
         userId: user.id, // Always set from authenticated user, ignore any userId in payload
       },
     });
+
+    // Update piggy bank balance if piggyBankId is provided
+    if (transaction.piggyBankId) {
+      const balanceChange = transaction.type === 'income' 
+        ? Number(transaction.amount) 
+        : -Number(transaction.amount);
+      
+      await prisma.piggyBank.update({
+        where: { id: transaction.piggyBankId },
+        data: { currentBalance: { increment: balanceChange } }
+      });
+    }
+
     return NextResponse.json(newTransaction);
   } catch (error) {
     console.error("POST /api/transactions error:", error);
@@ -68,7 +83,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Transaction ID is required" }, { status: 400 });
     }
     
-    // Verify the transaction belongs to the user
+    // Get the existing transaction to calculate balance changes
     const existingTransaction = await prisma.transaction.findFirst({
       where: {
         id: id,
@@ -80,6 +95,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
+    // Calculate old balance change
+    const oldBalanceChange = existingTransaction.type === 'income' 
+      ? existingTransaction.amount 
+      : -existingTransaction.amount;
+
+    // Update the transaction
     const updatedTransaction = await prisma.transaction.update({
       where: { id },
       data: {
@@ -90,6 +111,21 @@ export async function PATCH(request: Request) {
         category: true
       }
     });
+
+    // Calculate new balance change
+    const newBalanceChange = updatedTransaction.type === 'income' 
+      ? updatedTransaction.amount 
+      : -updatedTransaction.amount;
+
+    // Update piggy bank balance if piggyBankId is provided
+    if (updatedTransaction.piggyBankId) {
+      const balanceDifference = newBalanceChange - oldBalanceChange;
+      
+      await prisma.piggyBank.update({
+        where: { id: updatedTransaction.piggyBankId },
+        data: { currentBalance: { increment: balanceDifference } }
+      });
+    }
     
     return NextResponse.json(updatedTransaction);
   } catch (error) {
@@ -114,7 +150,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Transaction ID is required" }, { status: 400 });
     }
 
-    // Verify the transaction belongs to the user
+    // Get the transaction to reverse balance changes
     const existingTransaction = await prisma.transaction.findFirst({
       where: {
         id: id,
@@ -124,6 +160,18 @@ export async function DELETE(request: Request) {
 
     if (!existingTransaction) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    // Reverse the balance change if piggyBankId exists
+    if (existingTransaction.piggyBankId) {
+      const balanceChange = existingTransaction.type === 'income' 
+        ? -existingTransaction.amount 
+        : existingTransaction.amount;
+      
+      await prisma.piggyBank.update({
+        where: { id: existingTransaction.piggyBankId },
+        data: { currentBalance: { increment: balanceChange } }
+      });
     }
 
     await prisma.transaction.delete({

@@ -11,6 +11,7 @@ export const useAddTransaction = () => {
     onSuccess: () => {
       // Invalidate and refetch transactions query after successful mutation
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
     },
   });
 };
@@ -19,9 +20,10 @@ export const useUpdateTransaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<Transaction, 'id' | 'userId'>> }) => updateTransaction(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<Transaction, 'id' | 'userId'> & { piggyBankId?: string }> }) => updateTransaction(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
     },
   });
 };
@@ -33,6 +35,7 @@ export const useDeleteTransaction = () => {
     mutationFn: deleteTransaction,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
     },
   });
 };

@@ -1,7 +1,9 @@
 import { Transaction } from "@prisma/client";
 import axios from "axios";
 
-type CreateTransactionData = Omit<Transaction, 'id' | 'userId'>;
+type CreateTransactionData = Omit<Transaction, 'id' | 'userId'> & {
+  piggyBankId?: string | null;
+};
 
 
 export const getTransactions = async () => {
