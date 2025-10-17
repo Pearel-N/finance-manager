@@ -1,6 +1,6 @@
 "use client";
 
-import { SelectCategory } from "@/components/selectCategory";
+import { RadioGroupCategory } from "@/components/RadioGroupCategory";
 import { Card } from "@/components/ui/card";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,12 +13,13 @@ import { Button } from "@/components/ui/button";
 import { useAddTransaction } from "@/hooks/mutation/transactions";
 
 export default function AddTransaction() {
-  const { control, handleSubmit, reset } = useForm<
+  const { control, handleSubmit, reset, formState: { isValid } } = useForm<
     z.infer<typeof transactionSchema>
   >({
     resolver: zodResolver(transactionSchema),
+    mode: "onChange", // Enable real-time validation
     defaultValues: {
-      amount: "0",
+      amount: "",
       isExpense: true,
       note: "",
       category: "",
@@ -31,7 +32,7 @@ export default function AddTransaction() {
     try {
       await addTransactionMutation.mutateAsync({
         amount: Number(data.amount),
-        note: data.note || null,
+        note: data.note,
         type: data.isExpense ? "expense" : "income",
         date: new Date(),
         categoryId: data.category,
@@ -58,9 +59,12 @@ export default function AddTransaction() {
         <Controller
           control={control}
           name="category"
-          render={({ field }) => <SelectCategory {...field} />}
+          render={({ field }) => <RadioGroupCategory {...field} />}
         />
-        <Button disabled={addTransactionMutation.isPending} type="submit">
+        <Button 
+          disabled={addTransactionMutation.isPending || !isValid} 
+          type="submit"
+        >
           {addTransactionMutation.isPending ? "Adding..." : "Add Transaction"}
         </Button>
       </Card>
