@@ -10,15 +10,12 @@ import { InputController } from "@/lib/ui/InputController";
 import { SwitchController } from "@/lib/ui/SwitchController";
 import { TextareaController } from "@/lib/ui/TextareaController";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { addTransaction } from "@/services/transactions";
+import { useAddTransaction } from "@/hooks/mutation/transactions";
 
 export default function AddTransaction() {
-  const {
-    control,
-    handleSubmit,
-    reset,
-  } = useForm<z.infer<typeof transactionSchema>>({
+  const { control, handleSubmit, reset } = useForm<
+    z.infer<typeof transactionSchema>
+  >({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       amount: "0",
@@ -28,31 +25,28 @@ export default function AddTransaction() {
     },
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const addTransactionMutation = useAddTransaction();
 
   const onSubmit = async (data: z.infer<typeof transactionSchema>) => {
-    setIsLoading(true);
     try {
-      await addTransaction({
+      await addTransactionMutation.mutateAsync({
         amount: Number(data.amount),
         note: data.note || null,
         type: data.isExpense ? "expense" : "income",
         date: new Date(),
         categoryId: data.category,
       });
-      
+
       // Reset the form after successful submission
       reset();
     } catch (error) {
       console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Card className="flex flex-col gap-4 p-4 w-fit h-fit">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex justify-center">
+      <Card className="flex flex-col gap-4 p-4 max-w-md w-full h-fit">
         <InputController
           type="number"
           placeholder="Amount"
@@ -66,8 +60,8 @@ export default function AddTransaction() {
           name="category"
           render={({ field }) => <SelectCategory {...field} />}
         />
-        <Button disabled={isLoading} type="submit">
-          {isLoading ? "Adding..." : "Add Transaction"}
+        <Button disabled={addTransactionMutation.isPending} type="submit">
+          {addTransactionMutation.isPending ? "Adding..." : "Add Transaction"}
         </Button>
       </Card>
     </form>
