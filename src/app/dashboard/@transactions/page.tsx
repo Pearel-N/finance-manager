@@ -30,7 +30,7 @@ import { formatTransactionDate } from "@/lib/date-utils";
 import { useState } from "react";
 
 export default function Transactions() {
-  const { data, isLoading, error } = useTransactions();
+  const { data, isLoading, error, isFetching } = useTransactions();
   const { data: categories } = useCategories();
   const updateTransactionMutation = useUpdateTransaction();
   const deleteTransactionMutation = useDeleteTransaction();
@@ -108,7 +108,19 @@ export default function Transactions() {
   }
   
   return (
-    <div>
+    <div className="relative">
+      {/* Loading overlay for refetch operations */}
+      {isFetching && !isLoading && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg shadow-lg border">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              <span className="text-sm">Updating transactions...</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <Table>
         <TableHeader>
           <TableRow>
@@ -203,7 +215,14 @@ export default function Transactions() {
                         onClick={saveEdit}
                         disabled={updateTransactionMutation.isPending}
                       >
-                        Save
+                        {updateTransactionMutation.isPending ? (
+                          <div className="flex items-center gap-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+                            Saving...
+                          </div>
+                        ) : (
+                          "Save"
+                        )}
                       </Button>
                       <Button 
                         size="sm" 
@@ -218,12 +237,17 @@ export default function Transactions() {
                       <Button 
                         size="sm" 
                         onClick={() => startEdit(transaction)}
+                        disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}
                       >
                         Edit
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="destructive">
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}
+                          >
                             Delete
                           </Button>
                         </AlertDialogTrigger>
@@ -238,9 +262,17 @@ export default function Transactions() {
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDelete(transaction.id)}
+                              disabled={deleteTransactionMutation.isPending}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              Delete
+                              {deleteTransactionMutation.isPending ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+                                  Deleting...
+                                </div>
+                              ) : (
+                                "Delete"
+                              )}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
