@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import { createBudgetRecord, calculateBudgets } from "@/services/budget";
 
 export async function GET() {
   try {
@@ -59,6 +60,65 @@ export async function POST(request: Request) {
         where: { id: transaction.piggyBankId },
         data: { currentBalance: { increment: balanceChange } }
       });
+
+      // Check if this is an expense from the default piggy bank
+      const piggyBank = await prisma.piggyBank.findUnique({
+        where: { id: transaction.piggyBankId },
+      });
+
+      if (piggyBank?.isDefault && transaction.type === 'expense') {
+        // Create budget records if they don't exist
+        const transactionDate = new Date(transaction.date || new Date());
+
+        // Get period start dates
+        const monthStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), 1);
+        const dayStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
+        
+        // Calculate week start (Monday)
+        const weekDay = transactionDate.getDay();
+        const weekStartDay = transactionDate.getDate() - (weekDay === 0 ? 6 : weekDay - 1);
+        const weekStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), weekStartDay);
+
+        // Calculate budgets to get the amounts that were shown to user
+        const budgets = await calculateBudgets(user.id);
+
+        // Check if budget records exist and create if they don't
+        const existingBudget = await prisma.budget.findFirst({
+          where: {
+            userId: user.id,
+            periodType: 'month',
+            periodStartDate: monthStart,
+          },
+        });
+
+        if (!existingBudget) {
+          await createBudgetRecord(user.id, 'month', monthStart, budgets.monthly.initialBudget ?? 0);
+        }
+
+        const existingWeekBudget = await prisma.budget.findFirst({
+          where: {
+            userId: user.id,
+            periodType: 'week',
+            periodStartDate: weekStart,
+          },
+        });
+
+        if (!existingWeekBudget) {
+          await createBudgetRecord(user.id, 'week', weekStart, budgets.weekly.initialBudget ?? 0);
+        }
+
+        const existingDayBudget = await prisma.budget.findFirst({
+          where: {
+            userId: user.id,
+            periodType: 'day',
+            periodStartDate: dayStart,
+          },
+        });
+
+        if (!existingDayBudget) {
+          await createBudgetRecord(user.id, 'day', dayStart, budgets.daily.initialBudget ?? 0);
+        }
+      }
     }
 
     return NextResponse.json(newTransaction);

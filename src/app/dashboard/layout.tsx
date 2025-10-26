@@ -5,7 +5,6 @@ export default function DashboardLayout({
   transactions,
   piggyBanks,
 }: {
-  children: React.ReactNode;
   addTransaction: React.ReactNode;
   transactions: React.ReactNode;
   piggyBanks: React.ReactNode;

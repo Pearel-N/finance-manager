@@ -13,6 +13,7 @@ model User {
   transactions Transaction[]
   categories   Category[]
   piggyBanks   PiggyBank[]
+  budgets     Budget[]
 }
 
 model Category {
@@ -46,4 +47,16 @@ model PiggyBank {
   userId         String
   user           User          @relation(fields: [userId], references: [id])
   transactions   Transaction[]
+}
+
+model Budget {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  periodType      String   // "month" | "week" | "day"
+  periodStartDate DateTime // Start date of the period
+  initialBudget   Float    // The budget amount shown to user when first transaction was added
+  createdAt       DateTime @default(now())
+  
+  @@unique([userId, periodType, periodStartDate])
 }

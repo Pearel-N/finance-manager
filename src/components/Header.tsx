@@ -82,7 +82,16 @@ export default function Header() {
                   >
                     Home
                   </Link>
-                  {/* Future navigation tabs will be added here */}
+                  <Link
+                    href="/budget"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive("/budget") 
+                        ? "text-primary" 
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Budget
+                  </Link>
                 </div>
                 <Button
                   variant="outline"
