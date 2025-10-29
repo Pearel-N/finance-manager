@@ -10,7 +10,7 @@ import { useUpdateProfile, useUpdatePassword } from "@/hooks/mutation/profile";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency-utils";
 import { logout } from "@/app/auth/actions";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 function ProfileContent() {
@@ -295,7 +295,13 @@ function ProfileContent() {
 export default function ProfilePage() {
   return (
     <QueryProvider>
-      <ProfileContent />
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      }>
+        <ProfileContent />
+      </Suspense>
     </QueryProvider>
   );
 }
