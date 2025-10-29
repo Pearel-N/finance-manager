@@ -143,10 +143,10 @@ export async function updateProfile(formData: FormData) {
     const updateData: { name?: string | null; currency?: string } = {}
     
     if (name !== undefined) {
-      updateData.name = name === '' ? null : name.trim()
+      updateData.name = name === null || name === '' ? null : name.trim()
     }
     
-    if (currency !== undefined) {
+    if (currency !== undefined && currency !== null) {
       const validCurrencies = ['INR', 'USD', 'EUR']
       if (!validCurrencies.includes(currency)) {
         redirect('/profile?error=' + encodeURIComponent('Invalid currency'))
