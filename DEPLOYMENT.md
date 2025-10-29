@@ -15,9 +15,26 @@ You need a PostgreSQL database. The easiest option is to use Supabase's built-in
 1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
 2. Create a new project or use an existing one
 3. Go to **Settings** → **Database**
-4. Copy your **Connection string** (URI format)
-   - It should look like: `postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`
-   - Click "URI" format to get the connection string
+4. **IMPORTANT for Vercel/Serverless**: You must use the **Connection Pooler** URL, not the direct connection!
+
+### Finding the Connection Pooler URL:
+
+1. In Supabase Dashboard → **Settings** → **Database**
+2. Scroll down to **Connection Pooling** section
+3. Select **Session mode** or **Transaction mode** (Transaction mode is recommended for Prisma)
+4. Copy the connection string - it should look like:
+   ```
+   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true
+   ```
+   OR (newer format):
+   ```
+   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres?pgbouncer=true
+   ```
+
+**Why Connection Pooler?**
+- Direct connections (`db.xxx.supabase.co:5432`) don't work reliably with serverless functions
+- Connection pooler is designed for serverless environments like Vercel
+- It handles connection limits and scaling automatically
 
 ## Step 2: Deploy to Vercel
 
@@ -46,9 +63,11 @@ You **must** set these environment variables for your app to work:
 
 | Variable Name | Value | Where to Find |
 |--------------|-------|---------------|
-| `DATABASE_URL` | Your PostgreSQL connection string | Supabase Dashboard → Settings → Database → Connection string (URI) |
+| `DATABASE_URL` | **Connection Pooler URL** (see Step 1) | Supabase Dashboard → Settings → Database → Connection Pooling → Transaction mode → Connection string |
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Supabase Dashboard → Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key | Supabase Dashboard → Settings → API → anon public key |
+
+**⚠️ Critical:** Make sure to use the **Connection Pooler** URL, not the direct connection URL! The pooler URL contains `pooler.supabase.com` in the hostname.
 
 **Important:** Set these for **Production**, **Preview**, and **Development** environments (you can select all three when adding each variable).
 
@@ -118,8 +137,17 @@ After setting environment variables:
 - **Ensure Prisma Client generates** - the `postinstall` script should handle this automatically
 
 ### Database Connection Issues
+
+**Error: "Can't reach database server at `db.xxx.supabase.co:5432`"**
+- This means you're using the direct connection URL instead of the connection pooler URL
+- **Solution**: Use the Connection Pooler URL from Supabase Dashboard → Settings → Database → Connection Pooling
+- The pooler URL should have `pooler.supabase.com` in the hostname, not `db.xxx.supabase.co`
+- Connection pooler URL format: `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true`
+
+**Other Database Issues:**
 - Verify your `DATABASE_URL` is correct and includes the password
-- Some database providers require SSL - if you get SSL errors, add `?sslmode=require` to the end of your connection string
+- Make sure you're using **Transaction mode** for the connection pooler (Prisma works best with this)
+- Some database providers require SSL - if you get SSL errors, add `?sslmode=require` to the end of your connection string (before `?pgbouncer=true`)
 - Check that your database allows connections from external IPs (Supabase does this by default)
 
 ### Authentication Not Working
