@@ -24,12 +24,14 @@ You need a PostgreSQL database. The easiest option is to use Supabase's built-in
 3. Select **Session mode** or **Transaction mode** (Transaction mode is recommended for Prisma)
 4. Copy the connection string - it should look like:
    ```
-   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true
+   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
    ```
    OR (newer format):
    ```
-   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres?pgbouncer=true
+   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres?pgbouncer=true&connection_limit=1
    ```
+   
+   **Important:** Make sure to add `&connection_limit=1` at the end of the connection string. This is required for Prisma to work with Supabase's connection pooler.
 
 **Why Connection Pooler?**
 - Direct connections (`db.xxx.supabase.co:5432`) don't work reliably with serverless functions
@@ -142,7 +144,8 @@ After setting environment variables:
 - This means you're using the direct connection URL instead of the connection pooler URL
 - **Solution**: Use the Connection Pooler URL from Supabase Dashboard → Settings → Database → Connection Pooling
 - The pooler URL should have `pooler.supabase.com` in the hostname, not `db.xxx.supabase.co`
-- Connection pooler URL format: `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true`
+- Connection pooler URL format: `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1`
+- **Critical:** You must add `&connection_limit=1` to your connection string for Prisma compatibility
 
 **Other Database Issues:**
 - Verify your `DATABASE_URL` is correct and includes the password
