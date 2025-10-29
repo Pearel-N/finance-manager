@@ -22,6 +22,21 @@ async function createOrGetUser(email: string, supabaseUserId: string) {
           currency: 'INR' // Set default currency
         }
       })
+
+      // Create default piggy bank for new users
+      try {
+        await prisma.piggyBank.create({
+          data: {
+            name: 'My Bank',
+            userId: user.id,
+            isDefault: true,
+            currentBalance: 0
+          }
+        })
+      } catch (error) {
+        console.error('Error creating default piggy bank:', error)
+        // Continue even if piggy bank creation fails
+      }
     } else if (user.id !== supabaseUserId) {
       // If user exists but with different ID, update the ID to match Supabase
       user = await prisma.user.update({
