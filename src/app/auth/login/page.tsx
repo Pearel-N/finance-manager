@@ -12,11 +12,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { login } from "../actions";
+import { useRouter } from "next/navigation";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const router = useRouter();
   const handleLogin = () => {
     const formData = new FormData();
     formData.append("email", email);
@@ -33,7 +34,7 @@ export default function Signup() {
             Login to your account
           </CardDescription>
           <CardAction>
-            <Button>Sign Up</Button>
+            <Button onClick={() => router.push('/auth/signup')}>Sign Up</Button>
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">

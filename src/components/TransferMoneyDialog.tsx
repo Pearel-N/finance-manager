@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { formatCurrency } from "@/lib/currency-utils";
+import { useProfile } from "@/hooks/queries/profile";
 
 interface TransferMoneyDialogProps {
   isOpen: boolean;
@@ -36,6 +38,8 @@ export function TransferMoneyDialog({ isOpen, onClose, sourcePiggyBank }: Transf
   const [isWithdrawal, setIsWithdrawal] = useState(false);
   const transferMoneyMutation = useTransferMoney();
   const { data: piggyBanks } = usePiggyBanks();
+  const { data: profile } = useProfile();
+  const currency = profile?.currency || 'INR';
 
   const { control, handleSubmit, reset, watch, formState: { isValid } } = useForm<
     z.infer<typeof transferMoneySchema>
@@ -124,7 +128,7 @@ export function TransferMoneyDialog({ isOpen, onClose, sourcePiggyBank }: Transf
                     <p className="text-sm text-destructive mt-1">{error.message}</p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Available balance: ${sourcePiggyBank.currentBalance.toFixed(2)}
+                    Available balance: {formatCurrency(sourcePiggyBank.currentBalance, currency)}
                   </p>
                 </div>
               )}

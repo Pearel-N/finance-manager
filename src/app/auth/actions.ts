@@ -18,7 +18,8 @@ async function createOrGetUser(email: string, supabaseUserId: string) {
       user = await prisma.user.create({
         data: {
           id: supabaseUserId, // Use Supabase user ID as our user ID
-          email: email
+          email: email,
+          currency: 'INR' // Set default currency
         }
       })
     } else if (user.id !== supabaseUserId) {
@@ -110,4 +111,86 @@ export async function logout() {
   
   revalidatePath('/', 'layout')
   redirect('/')
+}
+
+export async function updateProfile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth/login?error=' + encodeURIComponent('Not authenticated'))
+  }
+
+  const name = formData.get('name') as string | null
+  const currency = formData.get('currency') as string | null
+
+  try {
+    const updateData: { name?: string | null; currency?: string } = {}
+    
+    if (name !== undefined) {
+      updateData.name = name === '' ? null : name.trim()
+    }
+    
+    if (currency !== undefined) {
+      const validCurrencies = ['INR', 'USD', 'EUR']
+      if (!validCurrencies.includes(currency)) {
+        redirect('/profile?error=' + encodeURIComponent('Invalid currency'))
+      }
+      updateData.currency = currency
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: updateData,
+    })
+
+    revalidatePath('/profile')
+    redirect('/profile?success=' + encodeURIComponent('Profile updated successfully'))
+  } catch (error) {
+    console.error('Profile update error:', error)
+    redirect('/profile?error=' + encodeURIComponent('Failed to update profile'))
+  }
+}
+
+export async function updatePassword(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth/login?error=' + encodeURIComponent('Not authenticated'))
+  }
+
+  const currentPassword = formData.get('currentPassword') as string
+  const newPassword = formData.get('newPassword') as string
+
+  if (!currentPassword || !newPassword) {
+    redirect('/profile?error=' + encodeURIComponent('Both passwords are required'))
+  }
+
+  if (newPassword.length < 6) {
+    redirect('/profile?error=' + encodeURIComponent('New password must be at least 6 characters'))
+  }
+
+  // Verify current password
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: currentPassword,
+  })
+
+  if (signInError) {
+    redirect('/profile?error=' + encodeURIComponent('Current password is incorrect'))
+  }
+
+  // Update password
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  })
+
+  if (updateError) {
+    console.error('Password update error:', updateError)
+    redirect('/profile?error=' + encodeURIComponent('Failed to update password'))
+  }
+
+  revalidatePath('/profile')
+  redirect('/profile?success=' + encodeURIComponent('Password updated successfully'))
 }

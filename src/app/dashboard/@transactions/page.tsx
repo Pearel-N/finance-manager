@@ -27,13 +27,17 @@ import { useCategories } from "@/hooks/queries/categories";
 import { useUpdateTransaction, useDeleteTransaction } from "@/hooks/mutation/transactions";
 import { Category, Transaction } from "@prisma/client";
 import { formatTransactionDate } from "@/lib/date-utils";
+import { formatCurrency } from "@/lib/currency-utils";
+import { useProfile } from "@/hooks/queries/profile";
 import { useState } from "react";
 
 export default function Transactions() {
   const { data, isLoading, error, isFetching } = useTransactions();
   const { data: categories } = useCategories();
+  const { data: profile } = useProfile();
   const updateTransactionMutation = useUpdateTransaction();
   const deleteTransactionMutation = useDeleteTransaction();
+  const currency = profile?.currency || 'INR';
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
@@ -147,7 +151,7 @@ export default function Transactions() {
                       className="w-24"
                     />
                   ) : (
-                    transaction.amount
+                    formatCurrency(transaction.amount, currency)
                   )}
                 </TableCell>
                 <TableCell>

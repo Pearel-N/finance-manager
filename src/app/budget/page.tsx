@@ -3,6 +3,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useBudgets } from "@/hooks/queries/budgets";
+import { useProfile } from "@/hooks/queries/profile";
+import { formatCurrency } from "@/lib/currency-utils";
 import { QueryProvider } from "@/components/providers/query-provider";
 
 export default function BudgetPage() {
@@ -15,6 +17,8 @@ export default function BudgetPage() {
 
 function BudgetContent() {
   const { data, isLoading, error } = useBudgets();
+  const { data: profile } = useProfile();
+  const currency = profile?.currency || 'INR';
 
   if (isLoading) {
     return (
@@ -36,11 +40,8 @@ function BudgetContent() {
     return null;
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrencyAmount = (amount: number) => {
+    return formatCurrency(amount, currency);
   };
 
   const getProgressPercentage = (spent: number, initial: number | null) => {
@@ -77,19 +78,19 @@ function BudgetContent() {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Initial Budget</span>
               <span className="font-medium">
-                {budget.initialBudget ? formatCurrency(budget.initialBudget) : '—'}
+                {budget.initialBudget ? formatCurrencyAmount(budget.initialBudget) : '—'}
               </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Spent</span>
               <span className={`font-medium ${isOverBudget(budget.remaining) ? 'text-destructive' : ''}`}>
-                {formatCurrency(budget.spent)}
+                {formatCurrencyAmount(budget.spent)}
               </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Remaining</span>
               <span className={`font-medium ${isOverBudget(budget.remaining) ? 'text-destructive' : 'text-green-600'}`}>
-                {formatCurrency(budget.remaining)}
+                {formatCurrencyAmount(budget.remaining)}
               </span>
             </div>
           </div>

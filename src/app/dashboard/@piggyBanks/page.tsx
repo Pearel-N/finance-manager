@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { PiggyBankCard } from "@/components/PiggyBankCard";
 import { PiggyBankDialog } from "@/components/PiggyBankDialog";
 import { usePiggyBanks } from "@/hooks/queries/piggy-banks";
@@ -33,13 +33,6 @@ export default function PiggyBanks() {
     );
   }
 
-  const totalBalance = piggyBanks?.reduce((sum, bank) => {
-    const balance = bank.currentBalance !== bank.calculatedBalance 
-      ? bank.currentBalance 
-      : bank.calculatedBalance;
-    return sum + balance;
-  }, 0) || 0;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -53,20 +46,6 @@ export default function PiggyBanks() {
           Create New Bank
         </Button>
       </div>
-
-      {piggyBanks && piggyBanks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">${totalBalance.toFixed(2)}</div>
-            <p className="text-sm text-muted-foreground">
-              Across {piggyBanks.length} piggy bank{piggyBanks.length !== 1 ? 's' : ''}
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {piggyBanks && piggyBanks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

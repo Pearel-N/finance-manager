@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { PiggyBankDialog } from "@/components/PiggyBankDialog";
 import { TransferMoneyDialog } from "@/components/TransferMoneyDialog";
 import { useDeletePiggyBank } from "@/hooks/mutation/piggy-banks";
+import { formatCurrency } from "@/lib/currency-utils";
+import { useProfile } from "@/hooks/queries/profile";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -35,6 +37,8 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const deletePiggyBankMutation = useDeletePiggyBank();
+  const { data: profile } = useProfile();
+  const currency = profile?.currency || 'INR';
 
   const balance = piggyBank.currentBalance !== piggyBank.calculatedBalance 
     ? piggyBank.currentBalance 
@@ -67,19 +71,19 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Current Balance</span>
-              <span className="font-semibold">${balance.toFixed(2)}</span>
+              <span className="font-semibold">{formatCurrency(balance, currency)}</span>
             </div>
             
             {piggyBank.goal && (
               <>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Goal</span>
-                  <span>${piggyBank.goal.toFixed(2)}</span>
+                  <span>{formatCurrency(piggyBank.goal, currency)}</span>
                 </div>
                 <Progress value={progressPercentage} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>{progressPercentage.toFixed(1)}% complete</span>
-                  <span>${(piggyBank.goal - balance).toFixed(2)} remaining</span>
+                  <span>{formatCurrency(piggyBank.goal - balance, currency)} remaining</span>
                 </div>
               </>
             )}

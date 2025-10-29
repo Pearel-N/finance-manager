@@ -6,7 +6,6 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
-import { logout } from "@/app/auth/actions";
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -35,10 +34,6 @@ export default function Header() {
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const isActive = (path: string) => pathname === path;
 
@@ -92,15 +87,17 @@ export default function Header() {
                   >
                     Budget
                   </Link>
+                  <Link
+                    href="/profile"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive("/profile") 
+                        ? "text-primary" 
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Profile
+                  </Link>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="ml-2"
-                >
-                  Logout
-                </Button>
               </>
             ) : (
               // Unauthenticated user navigation

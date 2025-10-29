@@ -48,13 +48,13 @@ export async function updateSession(request: NextRequest) {
     isDashboard: request.nextUrl.pathname.startsWith('/dashboard'),
   });
 
-  // Check if user is trying to access dashboard without being logged in
+  // Check if user is trying to access protected routes without being logged in
   if (
     !user &&
-    request.nextUrl.pathname.startsWith('/dashboard')
+    (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/profile'))
   ) {
-    console.log("🚫 REDIRECTING: No user accessing dashboard, redirecting to login");
-    // no user trying to access dashboard, redirect to login page
+    console.log("🚫 REDIRECTING: No user accessing protected route, redirecting to login");
+    // no user trying to access protected route, redirect to login page
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
