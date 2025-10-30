@@ -31,14 +31,14 @@ import { formatCurrency } from "@/lib/currency-utils";
 import { useProfile } from "@/hooks/queries/profile";
 import { useState } from "react";
 
-export default function Transactions() {
+export default function TransactionsTable() {
   const { data, isLoading, error, isFetching } = useTransactions();
   const { data: categories } = useCategories();
   const { data: profile } = useProfile();
   const updateTransactionMutation = useUpdateTransaction();
   const deleteTransactionMutation = useDeleteTransaction();
-  const currency = profile?.currency || 'INR';
-  
+  const currency = profile?.currency || "INR";
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
     amount: string;
@@ -59,7 +59,7 @@ export default function Transactions() {
     setEditData({
       amount: transaction.amount.toString(),
       type: transaction.type,
-      date: new Date(transaction.date).toISOString().split('T')[0],
+      date: new Date(transaction.date).toISOString().split("T")[0],
       categoryId: transaction.categoryId,
       note: transaction.note || "",
     });
@@ -78,7 +78,6 @@ export default function Transactions() {
 
   const saveEdit = async () => {
     if (!editingId) return;
-    
     try {
       await updateTransactionMutation.mutateAsync({
         id: editingId,
@@ -110,10 +109,9 @@ export default function Transactions() {
   if (error) {
     return <div>Error: {error.message}</div>;
   }
-  
+
   return (
     <div className="relative">
-      {/* Loading overlay for refetch operations */}
       {isFetching && !isLoading && (
         <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="bg-white p-4 rounded-lg shadow-lg border">
@@ -124,7 +122,7 @@ export default function Transactions() {
           </div>
         </div>
       )}
-      
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -139,7 +137,6 @@ export default function Transactions() {
         <TableBody>
           {data?.map((transaction: Transaction & { category: Category }) => {
             const isEditing = editingId === transaction.id;
-            
             return (
               <TableRow key={transaction.id}>
                 <TableCell>
@@ -147,7 +144,7 @@ export default function Transactions() {
                     <Input
                       type="number"
                       value={editData.amount}
-                      onChange={(e) => setEditData(prev => ({ ...prev, amount: e.target.value }))}
+                      onChange={(e) => setEditData((prev) => ({ ...prev, amount: e.target.value }))}
                       className="w-24"
                     />
                   ) : (
@@ -156,7 +153,7 @@ export default function Transactions() {
                 </TableCell>
                 <TableCell>
                   {isEditing ? (
-                    <Select value={editData.type} onValueChange={(value) => setEditData(prev => ({ ...prev, type: value }))}>
+                    <Select value={editData.type} onValueChange={(value) => setEditData((prev) => ({ ...prev, type: value }))}>
                       <SelectTrigger className="w-24">
                         <SelectValue />
                       </SelectTrigger>
@@ -174,7 +171,7 @@ export default function Transactions() {
                     <Input
                       type="date"
                       value={editData.date}
-                      onChange={(e) => setEditData(prev => ({ ...prev, date: e.target.value }))}
+                      onChange={(e) => setEditData((prev) => ({ ...prev, date: e.target.value }))}
                       className="w-32"
                     />
                   ) : (
@@ -183,7 +180,7 @@ export default function Transactions() {
                 </TableCell>
                 <TableCell>
                   {isEditing ? (
-                    <Select value={editData.categoryId} onValueChange={(value) => setEditData(prev => ({ ...prev, categoryId: value }))}>
+                    <Select value={editData.categoryId} onValueChange={(value) => setEditData((prev) => ({ ...prev, categoryId: value }))}>
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -203,7 +200,7 @@ export default function Transactions() {
                   {isEditing ? (
                     <Input
                       value={editData.note}
-                      onChange={(e) => setEditData(prev => ({ ...prev, note: e.target.value }))}
+                      onChange={(e) => setEditData((prev) => ({ ...prev, note: e.target.value }))}
                       placeholder="Note"
                       className="w-32"
                     />
@@ -214,11 +211,7 @@ export default function Transactions() {
                 <TableCell>
                   {isEditing ? (
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={saveEdit}
-                        disabled={updateTransactionMutation.isPending}
-                      >
+                      <Button size="sm" onClick={saveEdit} disabled={updateTransactionMutation.isPending}>
                         {updateTransactionMutation.isPending ? (
                           <div className="flex items-center gap-1">
                             <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
@@ -228,30 +221,18 @@ export default function Transactions() {
                           "Save"
                         )}
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={cancelEdit}
-                      >
+                      <Button size="sm" variant="outline" onClick={cancelEdit}>
                         Cancel
                       </Button>
                     </div>
                   ) : (
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => startEdit(transaction)}
-                        disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}
-                      >
+                      <Button size="sm" onClick={() => startEdit(transaction)} disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}>
                         Edit
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}
-                          >
+                          <Button size="sm" variant="destructive" disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}>
                             Delete
                           </Button>
                         </AlertDialogTrigger>
@@ -264,11 +245,7 @@ export default function Transactions() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(transaction.id)}
-                              disabled={deleteTransactionMutation.isPending}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
+                            <AlertDialogAction onClick={() => handleDelete(transaction.id)} disabled={deleteTransactionMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                               {deleteTransactionMutation.isPending ? (
                                 <div className="flex items-center gap-1">
                                   <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
@@ -292,3 +269,5 @@ export default function Transactions() {
     </div>
   );
 }
+
+

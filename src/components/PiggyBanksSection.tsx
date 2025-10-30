@@ -8,7 +8,7 @@ import { PiggyBankDialog } from "@/components/PiggyBankDialog";
 import { usePiggyBanks } from "@/hooks/queries/piggy-banks";
 import { PiggyBankWithCalculations } from "@/services/piggy-bank";
 
-export default function PiggyBanks() {
+export default function PiggyBanksSection() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { data: piggyBanks, isLoading, error } = usePiggyBanks();
 
@@ -38,13 +38,9 @@ export default function PiggyBanks() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Piggy Banks</h2>
-          <p className="text-muted-foreground">
-            Manage your savings goals and track your progress
-          </p>
+          <p className="text-muted-foreground">Manage your savings goals and track your progress</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          Create New Bank
-        </Button>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>Create New Bank</Button>
       </div>
 
       {piggyBanks && piggyBanks.length > 0 ? (
@@ -60,22 +56,17 @@ export default function PiggyBanks() {
               <div className="text-6xl">🐷</div>
               <h3 className="text-lg font-semibold">No piggy banks yet</h3>
               <p className="text-muted-foreground max-w-sm">
-                Create your first piggy bank to start saving for your goals. 
-                You can set savings targets and track your progress.
+                Create your first piggy bank to start saving for your goals. You can set savings targets and track your progress.
               </p>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                Create Your First Piggy Bank
-              </Button>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>Create Your First Piggy Bank</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <PiggyBankDialog
-        isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-        mode="create"
-      />
+      <PiggyBankDialog isOpen={isCreateDialogOpen} onClose={() => setIsCreateDialogOpen(false)} mode="create" />
     </div>
   );
 }
+
+

@@ -71,22 +71,22 @@ export default function Header() {
                   <Link
                     href="/dashboard"
                     className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive("/dashboard") 
-                        ? "text-primary" 
+                      isActive("/dashboard")
+                        ? "text-primary"
                         : "text-muted-foreground"
                     }`}
                   >
                     Home
                   </Link>
                   <Link
-                    href="/budget"
+                    href="/transactions"
                     className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive("/budget") 
-                        ? "text-primary" 
+                      isActive("/transactions")
+                        ? "text-primary"
                         : "text-muted-foreground"
                     }`}
                   >
-                    Budget
+                    Transactions
                   </Link>
                   <Link
                     href="/profile"
