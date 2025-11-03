@@ -12,6 +12,14 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get default bank first
+    const defaultBank = await prisma.piggyBank.findFirst({
+      where: {
+        userId: user.id,
+        isDefault: true,
+      },
+    });
+
     const piggyBanks = await prisma.piggyBank.findMany({
       where: {
         userId: user.id
@@ -22,6 +30,8 @@ export async function GET() {
             id: true,
             amount: true,
             type: true,
+            date: true,
+            note: true,
           }
         }
       },
@@ -31,17 +41,33 @@ export async function GET() {
       ]
     });
 
+    // Get current month boundaries
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
     // Calculate balance from transactions for each piggy bank
     const piggyBanksWithCalculatedBalance = piggyBanks.map(bank => {
       const calculatedBalance = bank.transactions.reduce((sum, transaction) => {
         return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
       }, 0);
 
+      // Check if there's a transfer from default bank in current month
+      const hasTransferFromDefaultThisMonth = defaultBank && bank.transactions.some(transaction => {
+        const transactionDate = new Date(transaction.date);
+        const isInCurrentMonth = transactionDate >= currentMonthStart && transactionDate <= currentMonthEnd;
+        const isIncome = transaction.type === 'income';
+        const isFromDefaultBank = transaction.note?.includes(`from ${defaultBank.name}`) || false;
+        
+        return isInCurrentMonth && isIncome && isFromDefaultBank;
+      });
+
       return {
         ...bank,
         calculatedBalance,
         // Use manual balance if it differs from calculated (user has manually adjusted)
-        balance: bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance
+        balance: bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance,
+        hasTransferFromDefaultThisMonth: hasTransferFromDefaultThisMonth || false,
       };
     });
 

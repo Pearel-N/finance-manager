@@ -10,7 +10,8 @@ import { PiggyBank, Transaction } from "@prisma/client";
 export type PiggyBankWithCalculations = PiggyBank & {
   calculatedBalance: number;
   balance: number;
-  transactions: Pick<Transaction, 'id' | 'amount' | 'type'>[];
+  hasTransferFromDefaultThisMonth?: boolean;
+  transactions: Pick<Transaction, 'id' | 'amount' | 'type' | 'date' | 'note'>[];
 };
 
 export const getPiggyBanks = async (): Promise<PiggyBankWithCalculations[]> => {

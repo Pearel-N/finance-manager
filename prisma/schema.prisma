@@ -43,6 +43,7 @@ model PiggyBank {
   id             String        @id @default(uuid())
   name           String
   goal           Float?
+  goalDueDate    DateTime?
   currentBalance Float         @default(0)
   isDefault      Boolean       @default(false)
   userId         String

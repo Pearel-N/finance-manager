@@ -1,8 +1,22 @@
 import { z } from "zod";
 
+const futureDateSchema = z.coerce.date().refine(
+  (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate > today;
+  },
+  {
+    message: "Due date must be in the future",
+  }
+);
+
 export const createPiggyBankSchema = z.object({
   name: z.string().min(1, "Name is required").max(50, "Name must be less than 50 characters"),
   goal: z.number().positive("Goal must be positive").optional(),
+  goalDueDate: futureDateSchema.optional(),
   currentBalance: z.number().min(0, "Balance cannot be negative").optional(),
   isDefault: z.boolean().optional(),
 });
@@ -10,6 +24,7 @@ export const createPiggyBankSchema = z.object({
 export const updatePiggyBankSchema = z.object({
   name: z.string().min(1, "Name is required").max(50, "Name must be less than 50 characters").optional(),
   goal: z.number().positive("Goal must be positive").optional(),
+  goalDueDate: futureDateSchema.optional(),
   currentBalance: z.number().min(0, "Balance cannot be negative").optional(),
   isDefault: z.boolean().optional(),
 });
