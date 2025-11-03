@@ -63,7 +63,7 @@ export function GoalHintDialog({ isOpen, onClose, targetPiggyBank }: GoalHintDia
     };
   }, [targetPiggyBank.goal, targetPiggyBank.currentBalance, targetPiggyBank.goalDueDate]);
 
-  const { control, handleSubmit, reset, watch, setValue, formState: { isValid } } = useForm<
+  const { control, handleSubmit, reset, watch, setValue, trigger, formState: { isValid } } = useForm<
     z.infer<typeof transferMoneySchema>
   >({
     resolver: zodResolver(transferMoneySchema),
@@ -84,14 +84,16 @@ export function GoalHintDialog({ isOpen, onClose, targetPiggyBank }: GoalHintDia
   useEffect(() => {
     if (isOpen) {
       if (suggestedAmount > 0) {
-        setValue("amount", Math.round(suggestedAmount * 100) / 100); // Round to 2 decimals
+        setValue("amount", Math.round(suggestedAmount * 100) / 100, { shouldValidate: true }); // Round to 2 decimals
       }
       if (defaultBank) {
-        setValue("fromPiggyBankId", defaultBank.id);
+        setValue("fromPiggyBankId", defaultBank.id, { shouldValidate: true });
       }
-      setValue("toPiggyBankId", targetPiggyBank.id);
+      setValue("toPiggyBankId", targetPiggyBank.id, { shouldValidate: true });
+      // Trigger validation for all fields to ensure form is valid
+      trigger();
     }
-  }, [isOpen, suggestedAmount, defaultBank, targetPiggyBank.id, setValue]);
+  }, [isOpen, suggestedAmount, defaultBank, targetPiggyBank.id, setValue, trigger]);
 
   const onSubmit = async (data: z.infer<typeof transferMoneySchema>) => {
     setIsSubmitting(true);
