@@ -17,12 +17,18 @@ import { useRouter } from "next/navigation";
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const handleLogin = () => {
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("password", password);
-    login(formData);
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
+      await login(formData);
+    } catch (error) {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,7 +56,16 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <Button onClick={handleLogin}>Sign In</Button>
+          <Button onClick={handleLogin} disabled={isLoading}>
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Signing in...
+              </div>
+            ) : (
+              "Sign In"
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -17,13 +17,19 @@ import { signup } from "../actions";
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleSignup = () => {
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("password", password);
-    signup(formData);
+  const handleSignup = async () => {
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
+      await signup(formData);
+    } catch (error) {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,7 +57,16 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <Button onClick={handleSignup}>Sign Up</Button>
+          <Button onClick={handleSignup} disabled={isLoading}>
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Signing up...
+              </div>
+            ) : (
+              "Sign Up"
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
