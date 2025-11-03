@@ -24,11 +24,12 @@ export const RadioGroupCategory = ({ onChange, value }: RadioGroupCategoryProps)
   const [searchQuery, setSearchQuery] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
 
-  // Filter categories based on search query
+  // Filter categories based on search query and exclude System category
   const filteredCategories = useMemo(() => {
     if (!categories.data) return [];
     
     return categories.data.filter((category: Category) =>
+      category.name !== 'System' && 
       category.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [categories.data, searchQuery]);

@@ -137,6 +137,7 @@ export default function TransactionsTable() {
         <TableBody>
           {data?.map((transaction: Transaction & { category: Category }) => {
             const isEditing = editingId === transaction.id;
+            const isSystemTransaction = transaction.category.name === 'System';
             return (
               <TableRow key={transaction.id}>
                 <TableCell>
@@ -227,12 +228,22 @@ export default function TransactionsTable() {
                     </div>
                   ) : (
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => startEdit(transaction)} disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}>
+                      <Button 
+                        size="sm" 
+                        onClick={() => startEdit(transaction)} 
+                        disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending || isSystemTransaction}
+                        title={isSystemTransaction ? "System transactions cannot be edited" : "Edit transaction"}
+                      >
                         Edit
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="destructive" disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending}>
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            disabled={updateTransactionMutation.isPending || deleteTransactionMutation.isPending || isSystemTransaction}
+                            title={isSystemTransaction ? "System transactions cannot be deleted" : "Delete transaction"}
+                          >
                             Delete
                           </Button>
                         </AlertDialogTrigger>

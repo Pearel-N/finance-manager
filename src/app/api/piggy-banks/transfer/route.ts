@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, getOrCreateSystemCategory } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { transferMoneySchema } from "@/utils/schema/piggy-bank";
 
@@ -53,7 +53,10 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      // Perform transfer between banks
+      // Get system category for transactions
+      const systemCategoryId = await getOrCreateSystemCategory(user.id);
+
+      // Perform transfer between banks and create transactions
       await prisma.$transaction([
         prisma.piggyBank.update({
           where: { id: validatedData.fromPiggyBankId },
@@ -62,7 +65,31 @@ export async function POST(request: Request) {
         prisma.piggyBank.update({
           where: { id: validatedData.toPiggyBankId },
           data: { currentBalance: { increment: validatedData.amount } }
-        })
+        }),
+        // Source: expense transaction
+        prisma.transaction.create({
+          data: {
+            amount: validatedData.amount,
+            type: 'expense',
+            note: `Transfer: ${validatedData.amount} to ${destinationPiggyBank.name}`,
+            categoryId: systemCategoryId,
+            userId: user.id,
+            piggyBankId: validatedData.fromPiggyBankId,
+            date: new Date(),
+          },
+        }),
+        // Destination: income transaction
+        prisma.transaction.create({
+          data: {
+            amount: validatedData.amount,
+            type: 'income',
+            note: `Transfer: ${validatedData.amount} from ${sourcePiggyBank.name}`,
+            categoryId: systemCategoryId,
+            userId: user.id,
+            piggyBankId: validatedData.toPiggyBankId,
+            date: new Date(),
+          },
+        }),
       ]);
 
       return NextResponse.json({ 
@@ -70,11 +97,27 @@ export async function POST(request: Request) {
         message: `Successfully transferred $${validatedData.amount} to ${destinationPiggyBank.name}` 
       });
     } else {
-      // Perform withdrawal
-      await prisma.piggyBank.update({
-        where: { id: validatedData.fromPiggyBankId },
-        data: { currentBalance: { decrement: validatedData.amount } }
-      });
+      // Perform withdrawal and create transaction
+      const systemCategoryId = await getOrCreateSystemCategory(user.id);
+
+      await prisma.$transaction([
+        prisma.piggyBank.update({
+          where: { id: validatedData.fromPiggyBankId },
+          data: { currentBalance: { decrement: validatedData.amount } }
+        }),
+        // Withdrawal: expense transaction
+        prisma.transaction.create({
+          data: {
+            amount: validatedData.amount,
+            type: 'expense',
+            note: `Withdrawal: ${validatedData.amount} from ${sourcePiggyBank.name}`,
+            categoryId: systemCategoryId,
+            userId: user.id,
+            piggyBankId: validatedData.fromPiggyBankId,
+            date: new Date(),
+          },
+        }),
+      ]);
 
       return NextResponse.json({ 
         success: true, 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, getOrCreateSystemCategory } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { createPiggyBankSchema, updatePiggyBankSchema } from "@/utils/schema/piggy-bank";
 
@@ -12,6 +12,14 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get default bank first
+    const defaultBank = await prisma.piggyBank.findFirst({
+      where: {
+        userId: user.id,
+        isDefault: true,
+      },
+    });
+
     const piggyBanks = await prisma.piggyBank.findMany({
       where: {
         userId: user.id
@@ -22,6 +30,8 @@ export async function GET() {
             id: true,
             amount: true,
             type: true,
+            date: true,
+            note: true,
           }
         }
       },
@@ -31,17 +41,33 @@ export async function GET() {
       ]
     });
 
+    // Get current month boundaries
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
     // Calculate balance from transactions for each piggy bank
     const piggyBanksWithCalculatedBalance = piggyBanks.map(bank => {
       const calculatedBalance = bank.transactions.reduce((sum, transaction) => {
         return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
       }, 0);
 
+      // Check if there's a transfer from default bank in current month
+      const hasTransferFromDefaultThisMonth = defaultBank && bank.transactions.some(transaction => {
+        const transactionDate = new Date(transaction.date);
+        const isInCurrentMonth = transactionDate >= currentMonthStart && transactionDate <= currentMonthEnd;
+        const isIncome = transaction.type === 'income';
+        const isFromDefaultBank = transaction.note?.includes(`from ${defaultBank.name}`) || false;
+        
+        return isInCurrentMonth && isIncome && isFromDefaultBank;
+      });
+
       return {
         ...bank,
         calculatedBalance,
         // Use manual balance if it differs from calculated (user has manually adjusted)
-        balance: bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance
+        balance: bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance,
+        hasTransferFromDefaultThisMonth: hasTransferFromDefaultThisMonth || false,
       };
     });
 
@@ -83,6 +109,23 @@ export async function POST(request: Request) {
         userId: user.id,
       },
     });
+
+    // If initial balance > 0, create a transaction for it
+    if (validatedData.currentBalance && validatedData.currentBalance > 0) {
+      const systemCategoryId = await getOrCreateSystemCategory(user.id);
+      
+      await prisma.transaction.create({
+        data: {
+          amount: validatedData.currentBalance,
+          type: 'income',
+          note: `Initial balance deposit: ${validatedData.currentBalance}`,
+          categoryId: systemCategoryId,
+          userId: user.id,
+          piggyBankId: newPiggyBank.id,
+          date: new Date(),
+        },
+      });
+    }
 
     return NextResponse.json(newPiggyBank);
   } catch (error) {
@@ -136,10 +179,34 @@ export async function PATCH(request: Request) {
       });
     }
 
+    // Check if currentBalance is being changed
+    const oldBalance = existingPiggyBank.currentBalance;
+    const newBalance = validatedData.currentBalance !== undefined ? validatedData.currentBalance : oldBalance;
+    const balanceDifference = newBalance - oldBalance;
+
     const updatedPiggyBank = await prisma.piggyBank.update({
       where: { id },
       data: validatedData,
     });
+
+    // If balance changed, create an adjustment transaction
+    if (balanceDifference !== 0) {
+      const systemCategoryId = await getOrCreateSystemCategory(user.id);
+      const transactionType = balanceDifference > 0 ? 'income' : 'expense';
+      const absoluteDifference = Math.abs(balanceDifference);
+
+      await prisma.transaction.create({
+        data: {
+          amount: absoluteDifference,
+          type: transactionType,
+          note: `Balance adjustment: Initial amount was ${oldBalance}, modified to ${newBalance}, difference is ${balanceDifference}`,
+          categoryId: systemCategoryId,
+          userId: user.id,
+          piggyBankId: id,
+          date: new Date(),
+        },
+      });
+    }
     
     return NextResponse.json(updatedPiggyBank);
   } catch (error) {

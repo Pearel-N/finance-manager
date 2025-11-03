@@ -26,6 +26,7 @@ interface PiggyBankDialogProps {
     id: string;
     name: string;
     goal?: number;
+    goalDueDate?: Date | string | null;
     currentBalance?: number;
     isDefault: boolean;
   };
@@ -47,6 +48,11 @@ export function PiggyBankDialog({ isOpen, onClose, piggyBank, mode }: PiggyBankD
     defaultValues: {
       name: piggyBank?.name || "",
       goal: piggyBank?.goal || undefined,
+      goalDueDate: piggyBank?.goalDueDate 
+        ? (typeof piggyBank.goalDueDate === 'string' 
+            ? new Date(piggyBank.goalDueDate) 
+            : piggyBank.goalDueDate)
+        : undefined,
       currentBalance: piggyBank?.currentBalance || 0,
       isDefault: piggyBank?.isDefault || false,
     },
@@ -128,6 +134,38 @@ export function PiggyBankDialog({ isOpen, onClose, piggyBank, mode }: PiggyBankD
                     {...field}
                     value={field.value || ""}
                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  />
+                  {error && (
+                    <p className="text-sm text-destructive mt-1">{error.message}</p>
+                  )}
+                </div>
+              )}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="goalDueDate">Goal Due Date (Optional)</Label>
+            <Controller
+              control={control}
+              name="goalDueDate"
+              render={({ field, fieldState: { error } }) => (
+                <div>
+                  <Input
+                    id="goalDueDate"
+                    type="date"
+                    {...field}
+                    value={field.value 
+                      ? (field.value instanceof Date 
+                          ? field.value.toISOString().split('T')[0] 
+                          : typeof field.value === 'string' 
+                            ? new Date(field.value).toISOString().split('T')[0]
+                            : '')
+                      : ''}
+                    onChange={(e) => {
+                      const dateValue = e.target.value;
+                      field.onChange(dateValue ? new Date(dateValue) : undefined);
+                    }}
+                    min={new Date().toISOString().split('T')[0]}
                   />
                   {error && (
                     <p className="text-sm text-destructive mt-1">{error.message}</p>
