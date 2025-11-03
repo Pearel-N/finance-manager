@@ -3,6 +3,7 @@ import { z } from "zod";
 export const createPiggyBankSchema = z.object({
   name: z.string().min(1, "Name is required").max(50, "Name must be less than 50 characters"),
   goal: z.number().positive("Goal must be positive").optional(),
+  currentBalance: z.number().min(0, "Balance cannot be negative").optional(),
   isDefault: z.boolean().optional(),
 });
 

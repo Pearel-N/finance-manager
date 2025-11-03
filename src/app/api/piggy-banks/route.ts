@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, getOrCreateSystemCategory } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { createPiggyBankSchema, updatePiggyBankSchema } from "@/utils/schema/piggy-bank";
 
@@ -84,6 +84,23 @@ export async function POST(request: Request) {
       },
     });
 
+    // If initial balance > 0, create a transaction for it
+    if (validatedData.currentBalance && validatedData.currentBalance > 0) {
+      const systemCategoryId = await getOrCreateSystemCategory(user.id);
+      
+      await prisma.transaction.create({
+        data: {
+          amount: validatedData.currentBalance,
+          type: 'income',
+          note: `Initial balance deposit: ${validatedData.currentBalance}`,
+          categoryId: systemCategoryId,
+          userId: user.id,
+          piggyBankId: newPiggyBank.id,
+          date: new Date(),
+        },
+      });
+    }
+
     return NextResponse.json(newPiggyBank);
   } catch (error) {
     console.error("POST /api/piggy-banks error:", error);
@@ -136,10 +153,34 @@ export async function PATCH(request: Request) {
       });
     }
 
+    // Check if currentBalance is being changed
+    const oldBalance = existingPiggyBank.currentBalance;
+    const newBalance = validatedData.currentBalance !== undefined ? validatedData.currentBalance : oldBalance;
+    const balanceDifference = newBalance - oldBalance;
+
     const updatedPiggyBank = await prisma.piggyBank.update({
       where: { id },
       data: validatedData,
     });
+
+    // If balance changed, create an adjustment transaction
+    if (balanceDifference !== 0) {
+      const systemCategoryId = await getOrCreateSystemCategory(user.id);
+      const transactionType = balanceDifference > 0 ? 'income' : 'expense';
+      const absoluteDifference = Math.abs(balanceDifference);
+
+      await prisma.transaction.create({
+        data: {
+          amount: absoluteDifference,
+          type: transactionType,
+          note: `Balance adjustment: Initial amount was ${oldBalance}, modified to ${newBalance}, difference is ${balanceDifference}`,
+          categoryId: systemCategoryId,
+          userId: user.id,
+          piggyBankId: id,
+          date: new Date(),
+        },
+      });
+    }
     
     return NextResponse.json(updatedPiggyBank);
   } catch (error) {

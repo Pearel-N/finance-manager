@@ -88,11 +88,21 @@ export async function PATCH(request: Request) {
       where: {
         id: id,
         userId: user.id
+      },
+      include: {
+        category: true
       }
     });
 
     if (!existingTransaction) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    // Prevent editing system transactions
+    if (existingTransaction.category.name === 'System') {
+      return NextResponse.json({ 
+        error: "System transactions cannot be edited" 
+      }, { status: 403 });
     }
 
     // Calculate old balance change
@@ -155,11 +165,21 @@ export async function DELETE(request: Request) {
       where: {
         id: id,
         userId: user.id
+      },
+      include: {
+        category: true
       }
     });
 
     if (!existingTransaction) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    // Prevent deleting system transactions
+    if (existingTransaction.category.name === 'System') {
+      return NextResponse.json({ 
+        error: "System transactions cannot be deleted" 
+      }, { status: 403 });
     }
 
     // Reverse the balance change if piggyBankId exists

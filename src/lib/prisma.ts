@@ -16,3 +16,31 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
 })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+/**
+ * Get or create the "System" category for a user.
+ * This category is used for system-generated transactions (transfers, balance adjustments, etc.)
+ * @param userId - The user ID
+ * @returns The system category ID
+ */
+export async function getOrCreateSystemCategory(userId: string): Promise<string> {
+  // Try to find existing system category
+  let systemCategory = await prisma.category.findFirst({
+    where: {
+      userId: userId,
+      name: 'System',
+    },
+  })
+
+  // Create if it doesn't exist
+  if (!systemCategory) {
+    systemCategory = await prisma.category.create({
+      data: {
+        name: 'System',
+        userId: userId,
+      },
+    })
+  }
+
+  return systemCategory.id
+}
