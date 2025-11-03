@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createPiggyBankSchema, updatePiggyBankSchema } from "@/utils/schema/piggy-bank";
 import { z } from "zod";
@@ -40,10 +40,12 @@ export function PiggyBankDialog({ isOpen, onClose, piggyBank, mode }: PiggyBankD
 
   const schema = mode === "create" ? createPiggyBankSchema : updatePiggyBankSchema;
   
-  const { control, handleSubmit, reset, formState: { isValid } } = useForm<
-    z.infer<typeof schema>
-  >({
-    resolver: zodResolver(schema),
+  type FormData = z.infer<typeof createPiggyBankSchema> | z.infer<typeof updatePiggyBankSchema>;
+  
+  const resolver = zodResolver(schema) as Resolver<FormData>;
+  
+  const { control, handleSubmit, reset, formState: { isValid } } = useForm<FormData>({
+    resolver,
     mode: "onChange",
     defaultValues: {
       name: piggyBank?.name || "",
