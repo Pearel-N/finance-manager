@@ -81,9 +81,9 @@ vercel env add NEXT_PUBLIC_SUPABASE_URL
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 
-## Step 4: Run Database Migrations
+## Step 4: Run Initial Database Migrations
 
-After setting up your database and environment variables, you need to apply your database schema:
+**For the first deployment only**, you need to set up your database schema manually:
 
 1. **Set your production database URL:**
    ```bash
@@ -101,6 +101,8 @@ After setting up your database and environment variables, you need to apply your
    ```bash
    npx prisma generate
    ```
+
+**Note:** After the initial setup, migrations will run automatically during each Vercel deployment. The build script includes `prisma migrate deploy`, which applies all pending migrations from your `prisma/migrations` folder.
 
 ## Step 5: Configure Supabase Redirect URLs
 
