@@ -5,6 +5,7 @@ export type BudgetData = {
   periodType: 'week' | 'day';
   available: number;
   periodStartDate: Date;
+  spent?: number;
 };
 
 export type BudgetsResponse = {
@@ -72,6 +73,34 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   const weekStart = getWeekStart(now);
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+  // Calculate today's spending from default bank
+  const getTodayDateRange = () => {
+    const start = new Date(dayStart);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(dayStart);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const { start: todayStart, end: todayEnd } = getTodayDateRange();
+
+  const todayExpenses = await prisma.transaction.findMany({
+    where: {
+      userId,
+      piggyBankId: defaultPiggyBank.id,
+      type: 'expense',
+      date: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+    },
+    select: {
+      amount: true,
+    },
+  });
+
+  const todaySpent = todayExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
+
   // Calculate weeks and days remaining
   const weeksRemaining = getWeeksRemainingInMonth(now);
   const daysRemaining = getDaysRemainingInMonth(now);
@@ -90,6 +119,7 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
       periodType: 'day',
       available: dailyAvailable,
       periodStartDate: dayStart,
+      spent: todaySpent,
     },
   };
 }
