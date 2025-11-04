@@ -74,15 +74,14 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   // Calculate today's spending from default bank
-  const getTodayDateRange = () => {
-    const start = new Date(dayStart);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(dayStart);
-    end.setHours(23, 59, 59, 999);
-    return { start, end };
-  };
-
-  const { start: todayStart, end: todayEnd } = getTodayDateRange();
+  // Create date range for today only (start of day to end of day)
+  // Using explicit date constructor to ensure we get exactly today's date
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDate = now.getDate();
+  
+  const todayStart = new Date(todayYear, todayMonth, todayDate, 0, 0, 0, 0);
+  const todayEnd = new Date(todayYear, todayMonth, todayDate, 23, 59, 59, 999);
 
   const todayExpenses = await prisma.transaction.findMany({
     where: {
