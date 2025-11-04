@@ -58,7 +58,12 @@ export const CircularProgress = React.forwardRef<
     
     const remainingAngle = (remaining / 100) * FULL_CIRCLE_RADIANS;
     const startAngleRad = TOP_ANGLE;
-    const endAngleRad = startAngleRad - remainingAngle; // Counter-clockwise
+    // For full circle, we need to go slightly less than full to ensure the arc renders
+    // Otherwise SVG won't draw when start and end are the same point
+    const effectiveAngle = remaining >= 100 
+      ? FULL_CIRCLE_RADIANS - 0.001 // Slightly less than full circle to ensure rendering
+      : remainingAngle;
+    const endAngleRad = startAngleRad - effectiveAngle; // Counter-clockwise
     
     return createArcPath(centerX, centerY, radius, startAngleRad, endAngleRad, 0);
   }, [isOverspent, remaining, centerX, centerY, radius]);

@@ -56,10 +56,17 @@ export default function TransactionsTable() {
 
   const startEdit = (transaction: Transaction & { category: Category }) => {
     setEditingId(transaction.id);
+    // Convert date to local date string (YYYY-MM-DD) without timezone conversion
+    const transactionDate = new Date(transaction.date);
+    const year = transactionDate.getFullYear();
+    const month = String(transactionDate.getMonth() + 1).padStart(2, '0');
+    const day = String(transactionDate.getDate()).padStart(2, '0');
+    const localDateString = `${year}-${month}-${day}`;
+    
     setEditData({
       amount: transaction.amount.toString(),
       type: transaction.type,
-      date: new Date(transaction.date).toISOString().split("T")[0],
+      date: localDateString,
       categoryId: transaction.categoryId,
       note: transaction.note || "",
     });
@@ -79,12 +86,16 @@ export default function TransactionsTable() {
   const saveEdit = async () => {
     if (!editingId) return;
     try {
+      // Parse date string as local date (not UTC) to avoid timezone shifts
+      const [year, month, day] = editData.date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      
       await updateTransactionMutation.mutateAsync({
         id: editingId,
         data: {
           amount: Number(editData.amount),
           type: editData.type,
-          date: new Date(editData.date),
+          date: localDate,
           categoryId: editData.categoryId,
           note: editData.note || null,
         },

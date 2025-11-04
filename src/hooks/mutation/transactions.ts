@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addTransaction, updateTransaction, deleteTransaction } from "@/services/transactions";
 import { Transaction } from "@prisma/client";
+import { BUDGETS } from "@/hooks/queries/budgets";
 
 
 export const useAddTransaction = () => {
@@ -9,9 +10,10 @@ export const useAddTransaction = () => {
   return useMutation({
     mutationFn: addTransaction,
     onSuccess: () => {
-      // Invalidate and refetch transactions query after successful mutation
+      // Invalidate and refetch queries after successful mutation
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };
@@ -24,6 +26,7 @@ export const useUpdateTransaction = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };
@@ -36,6 +39,7 @@ export const useDeleteTransaction = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };

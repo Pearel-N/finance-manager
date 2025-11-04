@@ -73,9 +73,7 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   const weekStart = getWeekStart(now);
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Calculate today's spending from default bank
-  // Create date range for today only (start of day to end of day)
-  // Using explicit date constructor to ensure we get exactly today's date
+  // Calculate today's date range
   const todayYear = now.getFullYear();
   const todayMonth = now.getMonth();
   const todayDate = now.getDate();
@@ -83,11 +81,11 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   const todayStart = new Date(todayYear, todayMonth, todayDate, 0, 0, 0, 0);
   const todayEnd = new Date(todayYear, todayMonth, todayDate, 23, 59, 59, 999);
 
-  const todayExpenses = await prisma.transaction.findMany({
+  // Get all today's transactions to calculate balance at start of day
+  const todayTransactions = await prisma.transaction.findMany({
     where: {
       userId,
       piggyBankId: defaultPiggyBank.id,
-      type: 'expense',
       date: {
         gte: todayStart,
         lte: todayEnd,
@@ -95,18 +93,29 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
     },
     select: {
       amount: true,
+      type: true,
     },
   });
 
-  const todaySpent = todayExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
+  // Calculate today's spending (expenses only)
+  const todaySpent = todayTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  // Calculate balance at start of today by subtracting today's transactions from current balance
+  const todayBalanceChange = todayTransactions.reduce((sum, transaction) => {
+    return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
+  }, 0);
+  const balanceAtStartOfDay = defaultBalance - todayBalanceChange;
 
   // Calculate weeks and days remaining
   const weeksRemaining = getWeeksRemainingInMonth(now);
   const daysRemaining = getDaysRemainingInMonth(now);
 
-  // Calculate weekly and daily budgets dynamically
-  const weeklyAvailable = weeksRemaining > 0 ? defaultBalance / weeksRemaining : defaultBalance;
-  const dailyAvailable = daysRemaining > 0 ? defaultBalance / daysRemaining : defaultBalance;
+  // Calculate weekly and daily budgets using balance at start of day (not current balance)
+  // This ensures the budget remains constant throughout the day
+  const weeklyAvailable = weeksRemaining > 0 ? balanceAtStartOfDay / weeksRemaining : balanceAtStartOfDay;
+  const dailyAvailable = daysRemaining > 0 ? balanceAtStartOfDay / daysRemaining : balanceAtStartOfDay;
 
   return {
     weekly: {

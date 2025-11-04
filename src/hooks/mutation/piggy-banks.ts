@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPiggyBank, updatePiggyBank, transferMoney, deletePiggyBank } from "@/services/piggy-bank";
 import { CreatePiggyBankData, UpdatePiggyBankData, TransferMoneyData } from "@/utils/schema/piggy-bank";
+import { BUDGETS } from "@/hooks/queries/budgets";
 
 export const useCreatePiggyBank = () => {
   const queryClient = useQueryClient();
@@ -9,6 +10,7 @@ export const useCreatePiggyBank = () => {
     mutationFn: (data: CreatePiggyBankData) => createPiggyBank(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };
@@ -21,6 +23,7 @@ export const useUpdatePiggyBank = () => {
       updatePiggyBank(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };
@@ -32,6 +35,7 @@ export const useTransferMoney = () => {
     mutationFn: (data: TransferMoneyData) => transferMoney(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };
@@ -43,6 +47,7 @@ export const useDeletePiggyBank = () => {
     mutationFn: (id: string) => deletePiggyBank(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["piggyBanks"] });
+      queryClient.invalidateQueries({ queryKey: BUDGETS });
     },
   });
 };
