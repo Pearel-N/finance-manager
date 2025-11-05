@@ -93,12 +93,21 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
       amount: true,
       type: true,
       excludeFromDailySpent: true,
+      category: {
+        select: {
+          name: true,
+        },
+      },
     },
   });
 
-  // Calculate today's spending (expenses only, excluding transactions marked to exclude)
+  // Calculate today's spending (expenses only, excluding transactions marked to exclude and system transactions)
+  // System transactions are automatically excluded from daily spending
   const todaySpent = todayTransactions
-    .filter(t => t.type === 'expense' && !t.excludeFromDailySpent)
+    .filter(t => {
+      const isSystemTransaction = t.category.name === 'System';
+      return t.type === 'expense' && !t.excludeFromDailySpent && !isSystemTransaction;
+    })
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   // Calculate balance at start of today by subtracting today's transactions from current balance
