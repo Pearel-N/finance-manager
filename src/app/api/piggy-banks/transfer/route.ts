@@ -76,6 +76,7 @@ export async function POST(request: Request) {
             userId: user.id,
             piggyBankId: validatedData.fromPiggyBankId,
             date: new Date(),
+            excludeFromDailySpent: true, // System transactions are excluded from daily spending
           },
         }),
         // Destination: income transaction
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
             userId: user.id,
             piggyBankId: validatedData.toPiggyBankId,
             date: new Date(),
+            excludeFromDailySpent: true, // System transactions are excluded from daily spending
           },
         }),
       ]);
@@ -115,6 +117,7 @@ export async function POST(request: Request) {
             userId: user.id,
             piggyBankId: validatedData.fromPiggyBankId,
             date: new Date(),
+            excludeFromDailySpent: true, // System transactions are excluded from daily spending
           },
         }),
       ]);

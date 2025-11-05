@@ -123,6 +123,7 @@ export async function POST(request: Request) {
           userId: user.id,
           piggyBankId: newPiggyBank.id,
           date: new Date(),
+          excludeFromDailySpent: true, // System transactions are excluded from daily spending
         },
       });
     }
@@ -204,6 +205,7 @@ export async function PATCH(request: Request) {
           userId: user.id,
           piggyBankId: id,
           date: new Date(),
+          excludeFromDailySpent: true, // System transactions are excluded from daily spending
         },
       });
     }

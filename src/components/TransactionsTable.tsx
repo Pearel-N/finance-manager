@@ -234,7 +234,8 @@ export default function TransactionsTable() {
                       onCheckedChange={(checked) => setEditData((prev) => ({ ...prev, excludeFromDailySpent: checked }))}
                     />
                   ) : (
-                    transaction.excludeFromDailySpent ? "Yes" : "No"
+                    // System transactions are always excluded, show "Yes" for them
+                    (isSystemTransaction || transaction.excludeFromDailySpent) ? "Yes" : "No"
                   )}
                 </TableCell>
                 <TableCell>
