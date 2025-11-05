@@ -26,19 +26,33 @@ export default function BudgetOverview() {
     if (!data?.daily) return null;
 
     const dailyBudget = data.daily;
-    const spent = dailyBudget.spent ?? 0;
-    const available = dailyBudget.available;
+    const spent = Number(dailyBudget.spent ?? 0);
+    const available = Number(dailyBudget.available);
+    // Use initialBudget for progress calculation (budget at start of day)
+    // This ensures progress bar updates correctly when expenses are added
+    // If initialBudget is not provided, use available as fallback
+    const initialBudget = Number(dailyBudget.initialBudget ?? available);
     const remaining = Math.max(0, available - spent);
-    const isOverspent = spent > available;
+    const isOverspent = spent > initialBudget;
     
-    // Calculate progress percentage (can exceed 100% when overspent)
-    const progressPercentage = available > 0 ? (spent / available) * 100 : 0;
-    const remainingPercentage = available > 0 ? (remaining / available) * 100 : 0;
-    const excessAmount = isOverspent ? spent - available : 0;
+    // Calculate progress percentage against initial budget (can exceed 100% when overspent)
+    const progressPercentage = initialBudget > 0 ? (spent / initialBudget) * 100 : 0;
+    const remainingPercentage = initialBudget > 0 ? (Math.max(0, initialBudget - spent) / initialBudget) * 100 : 0;
+    const excessAmount = isOverspent ? spent - initialBudget : 0;
+    
+    // Debug logging (can be removed later)
+    console.log('Budget calculation:', {
+      spent,
+      initialBudget,
+      available,
+      progressPercentage,
+      remainingPercentage,
+    });
 
     return {
       spent,
       available,
+      initialBudget,
       remaining,
       isOverspent,
       progressPercentage,
@@ -74,6 +88,7 @@ export default function BudgetOverview() {
   const {
     spent,
     available,
+    initialBudget,
     remaining,
     isOverspent,
     progressPercentage,
@@ -111,7 +126,7 @@ export default function BudgetOverview() {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Initial Budget</span>
               <span className="text-lg font-semibold">
-                {formatCurrencyAmount(available)}
+                {formatCurrencyAmount(initialBudget)}
               </span>
             </div>
             <div className="flex justify-between items-center border-t pt-3">

@@ -8,35 +8,36 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(uuid())
-  email       String       @unique
-  name        String?
-  currency    String?      @default("INR")
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  currency     String?       @default("INR")
   transactions Transaction[]
   categories   Category[]
   piggyBanks   PiggyBank[]
 }
 
 model Category {
-  id          String       @id @default(uuid())
-  name        String
-  userId      String
-  user        User         @relation(fields: [userId], references: [id])
+  id           String        @id @default(uuid())
+  name         String
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
 }
 
 model Transaction {
-  id          String     @id @default(uuid())
-  amount      Float
-  type        String     // "income" | "expense"
-  date        DateTime   @default(now())
-  note        String?
-  categoryId  String
-  category    Category   @relation(fields: [categoryId], references: [id])
-  userId      String
-  user        User       @relation(fields: [userId], references: [id])
-  piggyBankId String?
-  piggyBank   PiggyBank? @relation(fields: [piggyBankId], references: [id])
+  id                    String     @id @default(uuid())
+  amount                Float
+  type                  String // "income" | "expense"
+  date                  DateTime   @default(now())
+  note                  String?
+  categoryId            String
+  category              Category   @relation(fields: [categoryId], references: [id])
+  userId                String
+  user                  User       @relation(fields: [userId], references: [id])
+  piggyBankId           String?
+  piggyBank             PiggyBank? @relation(fields: [piggyBankId], references: [id])
+  excludeFromDailySpent Boolean    @default(false)
 }
 
 model PiggyBank {
@@ -50,4 +51,3 @@ model PiggyBank {
   user           User          @relation(fields: [userId], references: [id])
   transactions   Transaction[]
 }
-

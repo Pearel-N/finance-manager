@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useTransactions } from "@/hooks/queries/transactions";
 import { useCategories } from "@/hooks/queries/categories";
 import { useUpdateTransaction, useDeleteTransaction } from "@/hooks/mutation/transactions";
@@ -46,12 +47,14 @@ export default function TransactionsTable() {
     date: string;
     categoryId: string;
     note: string;
+    excludeFromDailySpent: boolean;
   }>({
     amount: "",
     type: "expense",
     date: "",
     categoryId: "",
     note: "",
+    excludeFromDailySpent: false,
   });
 
   const startEdit = (transaction: Transaction & { category: Category }) => {
@@ -69,6 +72,7 @@ export default function TransactionsTable() {
       date: localDateString,
       categoryId: transaction.categoryId,
       note: transaction.note || "",
+      excludeFromDailySpent: transaction.excludeFromDailySpent || false,
     });
   };
 
@@ -80,6 +84,7 @@ export default function TransactionsTable() {
       date: "",
       categoryId: "",
       note: "",
+      excludeFromDailySpent: false,
     });
   };
 
@@ -98,6 +103,7 @@ export default function TransactionsTable() {
           date: localDate,
           categoryId: editData.categoryId,
           note: editData.note || null,
+          excludeFromDailySpent: editData.excludeFromDailySpent,
         },
       });
       setEditingId(null);
@@ -142,6 +148,7 @@ export default function TransactionsTable() {
             <TableHead>Date</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Note</TableHead>
+            <TableHead>Exclude from Budget</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -218,6 +225,16 @@ export default function TransactionsTable() {
                     />
                   ) : (
                     transaction.note
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isEditing ? (
+                    <Switch
+                      checked={editData.excludeFromDailySpent}
+                      onCheckedChange={(checked) => setEditData((prev) => ({ ...prev, excludeFromDailySpent: checked }))}
+                    />
+                  ) : (
+                    transaction.excludeFromDailySpent ? "Yes" : "No"
                   )}
                 </TableCell>
                 <TableCell>

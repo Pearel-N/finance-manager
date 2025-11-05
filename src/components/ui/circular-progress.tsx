@@ -103,6 +103,7 @@ export const CircularProgress = React.forwardRef<
       {!isOverspent && remainingPath && (
         <g style={{ transform: transformStyle, transformOrigin: 'center' }}>
           <path
+            key={`remaining-${remaining}-${value}`}
             d={remainingPath}
             fill="none"
             stroke="currentColor"

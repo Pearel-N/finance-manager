@@ -6,6 +6,7 @@ export type BudgetData = {
   available: number;
   periodStartDate: Date;
   spent?: number;
+  initialBudget?: number; // Initial budget at start of day (for progress calculation)
 };
 
 export type BudgetsResponse = {
@@ -74,13 +75,10 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   // Calculate today's date range
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth();
-  const todayDate = now.getDate();
+  // Use start of day in local timezone, but ensure we capture all transactions for today
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   
-  const todayStart = new Date(todayYear, todayMonth, todayDate, 0, 0, 0, 0);
-  const todayEnd = new Date(todayYear, todayMonth, todayDate, 23, 59, 59, 999);
-
   // Get all today's transactions to calculate balance at start of day
   const todayTransactions = await prisma.transaction.findMany({
     where: {
@@ -94,15 +92,17 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
     select: {
       amount: true,
       type: true,
+      excludeFromDailySpent: true,
     },
   });
 
-  // Calculate today's spending (expenses only)
+  // Calculate today's spending (expenses only, excluding transactions marked to exclude)
   const todaySpent = todayTransactions
-    .filter(t => t.type === 'expense')
+    .filter(t => t.type === 'expense' && !t.excludeFromDailySpent)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   // Calculate balance at start of today by subtracting today's transactions from current balance
+  // This is used for calculating the "initial" daily budget that the progress bar shows
   const todayBalanceChange = todayTransactions.reduce((sum, transaction) => {
     return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
   }, 0);
@@ -112,10 +112,26 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   const weeksRemaining = getWeeksRemainingInMonth(now);
   const daysRemaining = getDaysRemainingInMonth(now);
 
-  // Calculate weekly and daily budgets using balance at start of day (not current balance)
-  // This ensures the budget remains constant throughout the day
-  const weeklyAvailable = weeksRemaining > 0 ? balanceAtStartOfDay / weeksRemaining : balanceAtStartOfDay;
-  const dailyAvailable = daysRemaining > 0 ? balanceAtStartOfDay / daysRemaining : balanceAtStartOfDay;
+  // Calculate initial daily budget (at start of day) - used for progress bar
+  const initialDailyBudget = daysRemaining > 0 ? balanceAtStartOfDay / daysRemaining : balanceAtStartOfDay;
+
+  // Debug logging
+  console.log('Budget calculation debug:', {
+    todayTransactionsCount: todayTransactions.length,
+    todayTransactions: todayTransactions,
+    todaySpent,
+    defaultBalance,
+    balanceAtStartOfDay,
+    daysRemaining,
+    initialDailyBudget,
+  });
+  
+  // Calculate available daily budget (current balance) - used for showing current available amount
+  // This decreases when excluded transactions (like investments) reduce the bank balance
+  const dailyAvailable = daysRemaining > 0 ? defaultBalance / daysRemaining : defaultBalance;
+  
+  // Weekly budget uses current balance
+  const weeklyAvailable = weeksRemaining > 0 ? defaultBalance / weeksRemaining : defaultBalance;
 
   return {
     weekly: {
@@ -128,6 +144,7 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
       available: dailyAvailable,
       periodStartDate: dayStart,
       spent: todaySpent,
+      initialBudget: initialDailyBudget, // Budget at start of day for progress calculation
     },
   };
 }

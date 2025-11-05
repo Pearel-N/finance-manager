@@ -39,6 +39,7 @@ export default function AddTransactionDialog({ open, onOpenChange }: AddTransact
       note: "",
       category: "",
       piggyBankId: "",
+      excludeFromDailySpent: false,
     },
   });
 
@@ -64,6 +65,7 @@ export default function AddTransactionDialog({ open, onOpenChange }: AddTransact
         date: new Date(),
         categoryId: data.category,
         piggyBankId: data.piggyBankId || null,
+        excludeFromDailySpent: data.excludeFromDailySpent || false,
       });
 
       reset();
@@ -82,6 +84,7 @@ export default function AddTransactionDialog({ open, onOpenChange }: AddTransact
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <InputController type="number" placeholder="Amount" name="amount" control={control} />
           <SwitchController name="isExpense" control={control} label="Expense" />
+          <SwitchController name="excludeFromDailySpent" control={control} label="Exclude from daily budget" />
           <TextareaController name="note" control={control} placeholder="Note" />
           <Controller control={control} name="category" render={({ field }) => <RadioGroupCategory {...field} />} />
 
