@@ -50,4 +50,7 @@ model PiggyBank {
   userId         String
   user           User          @relation(fields: [userId], references: [id])
   transactions   Transaction[]
+  parentId       String?
+  parent         PiggyBank?    @relation("PiggyBankParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children       PiggyBank[]   @relation("PiggyBankParent")
 }

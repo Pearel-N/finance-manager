@@ -33,6 +33,26 @@ export async function GET() {
             date: true,
             note: true,
           }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            currentBalance: true,
+            transactions: {
+              select: {
+                id: true,
+                amount: true,
+                type: true,
+              }
+            }
+          }
         }
       },
       orderBy: [
@@ -62,12 +82,44 @@ export async function GET() {
         return isInCurrentMonth && isIncome && isFromDefaultBank;
       });
 
+      // Use manual balance if it differs from calculated (user has manually adjusted)
+      const ownBalance = bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance;
+
+      // Calculate children balances
+      const childrenWithBalances = bank.children.map(child => {
+        const childCalculatedBalance = child.transactions.reduce((sum, transaction) => {
+          return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
+        }, 0);
+        // Use manual balance if it differs from calculated (user has manually adjusted)
+        const childBalance = child.currentBalance !== childCalculatedBalance 
+          ? child.currentBalance 
+          : childCalculatedBalance;
+        return {
+          id: child.id,
+          name: child.name,
+          calculatedBalance: childBalance,
+        };
+      });
+
+      const childrenTotal = childrenWithBalances.reduce((sum, child) => sum + child.calculatedBalance, 0);
+      const isParent = bank.children.length > 0;
+      const isChild = bank.parent !== null;
+
+      // For parents, calculate total balance (own + children)
+      const totalBalance = isParent ? ownBalance + childrenTotal : undefined;
+
       return {
         ...bank,
         calculatedBalance,
-        // Use manual balance if it differs from calculated (user has manually adjusted)
-        balance: bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance,
+        balance: ownBalance,
         hasTransferFromDefaultThisMonth: hasTransferFromDefaultThisMonth || false,
+        parent: bank.parent,
+        children: childrenWithBalances,
+        ownBalance: isParent ? ownBalance : undefined,
+        childrenTotal: isParent ? childrenTotal : undefined,
+        totalBalance,
+        isParent,
+        isChild,
       };
     });
 
@@ -90,6 +142,31 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = createPiggyBankSchema.parse(body);
 
+    // Validate parentId if provided
+    if (validatedData.parentId) {
+      // Ensure parent exists and belongs to user
+      const parent = await prisma.piggyBank.findFirst({
+        where: {
+          id: validatedData.parentId,
+          userId: user.id,
+        },
+      });
+
+      if (!parent) {
+        return NextResponse.json({ error: "Parent piggy bank not found" }, { status: 404 });
+      }
+
+      // Ensure parent is not already a child (parents cannot be children)
+      if (parent.parentId) {
+        return NextResponse.json({ 
+          error: "Cannot set a piggy bank that is already a child as a parent" 
+        }, { status: 400 });
+      }
+
+      // Prevent self-referencing
+      // This will be handled when we create, but good to check early
+    }
+
     // If setting as default, unset other defaults
     if (validatedData.isDefault) {
       await prisma.piggyBank.updateMany({
@@ -107,6 +184,7 @@ export async function POST(request: Request) {
       data: {
         ...validatedData,
         userId: user.id,
+        parentId: validatedData.parentId || null,
       },
     });
 
@@ -159,11 +237,55 @@ export async function PATCH(request: Request) {
       where: {
         id: id,
         userId: user.id
+      },
+      include: {
+        children: {
+          select: {
+            id: true,
+          }
+        }
       }
     });
 
     if (!existingPiggyBank) {
       return NextResponse.json({ error: "Piggy bank not found" }, { status: 404 });
+    }
+
+    // Validate parentId if provided or being updated
+    if (validatedData.parentId !== undefined) {
+      // If setting parentId to null, that's fine (removing parent relationship)
+      if (validatedData.parentId) {
+        // Ensure parent exists and belongs to user
+        const parent = await prisma.piggyBank.findFirst({
+          where: {
+            id: validatedData.parentId,
+            userId: user.id,
+          },
+        });
+
+        if (!parent) {
+          return NextResponse.json({ error: "Parent piggy bank not found" }, { status: 404 });
+        }
+
+        // Prevent self-referencing
+        if (parent.id === id) {
+          return NextResponse.json({ error: "Cannot set a piggy bank as its own parent" }, { status: 400 });
+        }
+
+        // Ensure parent is not already a child (parents cannot be children)
+        if (parent.parentId) {
+          return NextResponse.json({ 
+            error: "Cannot set a piggy bank that is already a child as a parent" 
+          }, { status: 400 });
+        }
+
+        // If this piggy bank has children, it cannot become a child (parents cannot be children)
+        if (existingPiggyBank.children.length > 0) {
+          return NextResponse.json({ 
+            error: "Cannot set a piggy bank that has children as a child" 
+          }, { status: 400 });
+        }
+      }
     }
 
     // If setting as default, unset other defaults
@@ -187,7 +309,10 @@ export async function PATCH(request: Request) {
 
     const updatedPiggyBank = await prisma.piggyBank.update({
       where: { id },
-      data: validatedData,
+      data: {
+        ...validatedData,
+        parentId: validatedData.parentId !== undefined ? validatedData.parentId : existingPiggyBank.parentId,
+      },
     });
 
     // If balance changed, create an adjustment transaction
@@ -243,12 +368,25 @@ export async function DELETE(request: Request) {
         userId: user.id
       },
       include: {
-        transactions: true
+        transactions: true,
+        children: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
       }
     });
 
     if (!existingPiggyBank) {
       return NextResponse.json({ error: "Piggy bank not found" }, { status: 404 });
+    }
+
+    // Prevent deletion if it has children
+    if (existingPiggyBank.children.length > 0) {
+      return NextResponse.json({ 
+        error: "Cannot delete piggy bank with linked children. Please delete or unlink children first." 
+      }, { status: 400 });
     }
 
     // Prevent deletion if it has transactions

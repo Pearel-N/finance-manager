@@ -36,6 +36,12 @@ interface PiggyBankCardProps {
     calculatedBalance: number;
     isDefault: boolean;
     hasTransferFromDefaultThisMonth?: boolean;
+    isParent?: boolean;
+    isChild?: boolean;
+    totalBalance?: number;
+    ownBalance?: number;
+    childrenTotal?: number;
+    parentId?: string | null;
   };
 }
 
@@ -48,9 +54,12 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
   const { data: profile } = useProfile();
   const currency = profile?.currency || 'INR';
 
-  const balance = piggyBank.currentBalance !== piggyBank.calculatedBalance 
-    ? piggyBank.currentBalance 
-    : piggyBank.calculatedBalance;
+  // For parents, use totalBalance (own + children), otherwise use regular balance
+  const balance = piggyBank.isParent && piggyBank.totalBalance !== undefined
+    ? piggyBank.totalBalance
+    : (piggyBank.currentBalance !== piggyBank.calculatedBalance 
+        ? piggyBank.currentBalance 
+        : piggyBank.calculatedBalance);
 
   const progressPercentage = piggyBank.goal 
     ? Math.min((balance / piggyBank.goal) * 100, 100) 
@@ -123,6 +132,12 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
                   <Lightbulb className="h-4 w-4 text-yellow-500" />
                 </Button>
               )}
+              {piggyBank.isParent && (
+                <Badge variant="secondary">Parent</Badge>
+              )}
+              {piggyBank.isChild && (
+                <Badge variant="outline">Child</Badge>
+              )}
               {piggyBank.isDefault && (
                 <Badge variant="secondary">Default</Badge>
               )}
@@ -131,10 +146,27 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Current Balance</span>
-              <span className="font-semibold">{formatCurrency(balance, currency)}</span>
-            </div>
+            {piggyBank.isParent && piggyBank.totalBalance !== undefined ? (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Own Balance</span>
+                  <span>{formatCurrency(piggyBank.ownBalance || 0, currency)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Children Total</span>
+                  <span>{formatCurrency(piggyBank.childrenTotal || 0, currency)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold border-t pt-2">
+                  <span className="text-muted-foreground">Total Balance</span>
+                  <span>{formatCurrency(piggyBank.totalBalance, currency)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Current Balance</span>
+                <span className="font-semibold">{formatCurrency(balance, currency)}</span>
+              </div>
+            )}
             
             {piggyBank.goal && (
               <>
@@ -208,6 +240,7 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
           ...piggyBank,
           goal: piggyBank.goal ?? undefined,
           goalDueDate: piggyBank.goalDueDate ?? undefined,
+          parentId: piggyBank.parentId ?? null,
         }}
         mode="edit"
       />

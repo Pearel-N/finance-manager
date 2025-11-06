@@ -18,6 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { usePiggyBanks } from "@/hooks/queries/piggy-banks";
 
 interface PiggyBankDialogProps {
   isOpen: boolean;
@@ -29,6 +37,7 @@ interface PiggyBankDialogProps {
     goalDueDate?: Date | string | null;
     currentBalance?: number;
     isDefault: boolean;
+    parentId?: string | null;
   };
   mode: "create" | "edit";
 }
@@ -37,6 +46,7 @@ export function PiggyBankDialog({ isOpen, onClose, piggyBank, mode }: PiggyBankD
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createPiggyBankMutation = useCreatePiggyBank();
   const updatePiggyBankMutation = useUpdatePiggyBank();
+  const { data: piggyBanks } = usePiggyBanks();
 
   const schema = mode === "create" ? createPiggyBankSchema : updatePiggyBankSchema;
   
@@ -57,8 +67,22 @@ export function PiggyBankDialog({ isOpen, onClose, piggyBank, mode }: PiggyBankD
         : undefined,
       currentBalance: piggyBank?.currentBalance || 0,
       isDefault: piggyBank?.isDefault || false,
+      parentId: piggyBank?.parentId || null,
     },
   });
+
+  // Filter piggy banks that can be parents (exclude those that are already children, and in edit mode, exclude current piggy bank)
+  const availableParents = piggyBanks?.filter(bank => {
+    // Exclude if it's already a child
+    if (bank.isChild || bank.parentId) {
+      return false;
+    }
+    // In edit mode, exclude the current piggy bank
+    if (mode === "edit" && piggyBank && bank.id === piggyBank.id) {
+      return false;
+    }
+    return true;
+  }) || [];
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
     setIsSubmitting(true);
@@ -193,6 +217,37 @@ export function PiggyBankDialog({ isOpen, onClose, piggyBank, mode }: PiggyBankD
                     value={field.value || ""}
                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
                   />
+                  {error && (
+                    <p className="text-sm text-destructive mt-1">{error.message}</p>
+                  )}
+                </div>
+              )}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="parentId">Parent Piggy Bank (Optional)</Label>
+            <Controller
+              control={control}
+              name="parentId"
+              render={({ field, fieldState: { error } }) => (
+                <div>
+                  <Select
+                    value={field.value || "__none__"}
+                    onValueChange={(value) => field.onChange(value === "__none__" ? null : value)}
+                  >
+                    <SelectTrigger id="parentId">
+                      <SelectValue placeholder="Select a parent piggy bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {availableParents.map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>
+                          {bank.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {error && (
                     <p className="text-sm text-destructive mt-1">{error.message}</p>
                   )}

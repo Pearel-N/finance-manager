@@ -12,6 +12,13 @@ export type PiggyBankWithCalculations = PiggyBank & {
   balance: number;
   hasTransferFromDefaultThisMonth?: boolean;
   transactions: Pick<Transaction, 'id' | 'amount' | 'type' | 'date' | 'note'>[];
+  parent?: { id: string; name: string } | null;
+  children?: Array<{ id: string; name: string; calculatedBalance: number }>;
+  totalBalance?: number; // For parents: own balance + sum of all children balances
+  ownBalance?: number; // For parents: just the parent's own balance
+  childrenTotal?: number; // For parents: sum of all children balances
+  isParent?: boolean;
+  isChild?: boolean;
 };
 
 export const getPiggyBanks = async (): Promise<PiggyBankWithCalculations[]> => {

@@ -19,6 +19,7 @@ export const createPiggyBankSchema = z.object({
   goalDueDate: futureDateSchema.optional(),
   currentBalance: z.number().min(0, "Balance cannot be negative").optional(),
   isDefault: z.boolean().optional(),
+  parentId: z.string().uuid("Parent ID must be a valid UUID").optional().nullable(),
 });
 
 export const updatePiggyBankSchema = z.object({
@@ -27,6 +28,7 @@ export const updatePiggyBankSchema = z.object({
   goalDueDate: futureDateSchema.optional(),
   currentBalance: z.number().min(0, "Balance cannot be negative").optional(),
   isDefault: z.boolean().optional(),
+  parentId: z.string().uuid("Parent ID must be a valid UUID").optional().nullable(),
 });
 
 export const transferMoneySchema = z.object({
