@@ -33,20 +33,23 @@ interface GoalHintDialogProps {
     currentBalance: number;
     goalDueDate: Date | string;
   };
+  sourceBankId?: string;
 }
 
-export function GoalHintDialog({ isOpen, onClose, targetPiggyBank }: GoalHintDialogProps) {
+export function GoalHintDialog({ isOpen, onClose, targetPiggyBank, sourceBankId }: GoalHintDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const transferMoneyMutation = useTransferMoney();
   const { data: piggyBanks } = usePiggyBanks();
   const { data: profile } = useProfile();
   const currency = profile?.currency || 'INR';
 
-  // Find default bank
-  const defaultBank = piggyBanks?.find(bank => bank.isDefault);
+  // Find initial source bank: use provided sourceBankId, otherwise use default bank
+  const initialSourceBank = sourceBankId 
+    ? piggyBanks?.find(bank => bank.id === sourceBankId)
+    : piggyBanks?.find(bank => bank.isDefault);
   
   // Calculate suggested amount with useMemo to ensure fresh calculation
-  const { suggestedAmount, remainingMonths, remainingAmount } = useMemo(() => {
+  const { suggestedAmount } = useMemo(() => {
     const goalDueDate = typeof targetPiggyBank.goalDueDate === 'string' 
       ? new Date(targetPiggyBank.goalDueDate) 
       : targetPiggyBank.goalDueDate;
@@ -69,7 +72,7 @@ export function GoalHintDialog({ isOpen, onClose, targetPiggyBank }: GoalHintDia
     resolver: zodResolver(transferMoneySchema),
     mode: "onChange",
     defaultValues: {
-      fromPiggyBankId: defaultBank?.id || "",
+      fromPiggyBankId: initialSourceBank?.id || "",
       toPiggyBankId: targetPiggyBank.id,
       amount: 0,
       isWithdrawal: false,
@@ -86,14 +89,14 @@ export function GoalHintDialog({ isOpen, onClose, targetPiggyBank }: GoalHintDia
       if (suggestedAmount > 0) {
         setValue("amount", Math.round(suggestedAmount * 100) / 100, { shouldValidate: true }); // Round to 2 decimals
       }
-      if (defaultBank) {
-        setValue("fromPiggyBankId", defaultBank.id, { shouldValidate: true });
+      if (initialSourceBank) {
+        setValue("fromPiggyBankId", initialSourceBank.id, { shouldValidate: true });
       }
       setValue("toPiggyBankId", targetPiggyBank.id, { shouldValidate: true });
       // Trigger validation for all fields to ensure form is valid
       trigger();
     }
-  }, [isOpen, suggestedAmount, defaultBank, targetPiggyBank.id, setValue, trigger]);
+  }, [isOpen, suggestedAmount, initialSourceBank, targetPiggyBank.id, setValue, trigger]);
 
   const onSubmit = async (data: z.infer<typeof transferMoneySchema>) => {
     setIsSubmitting(true);

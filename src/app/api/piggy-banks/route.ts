@@ -82,6 +82,17 @@ export async function GET() {
         return isInCurrentMonth && isIncome && isFromDefaultBank;
       });
 
+      // Check if there's a transfer from parent bank in current month (for child piggy banks)
+      const parentBank = bank.parent;
+      const hasTransferFromParentThisMonth = parentBank && bank.transactions.some(transaction => {
+        const transactionDate = new Date(transaction.date);
+        const isInCurrentMonth = transactionDate >= currentMonthStart && transactionDate <= currentMonthEnd;
+        const isIncome = transaction.type === 'income';
+        const isFromParentBank = transaction.note?.includes(`from ${parentBank.name}`) || false;
+        
+        return isInCurrentMonth && isIncome && isFromParentBank;
+      });
+
       // Use manual balance if it differs from calculated (user has manually adjusted)
       const ownBalance = bank.currentBalance !== calculatedBalance ? bank.currentBalance : calculatedBalance;
 
@@ -113,6 +124,7 @@ export async function GET() {
         calculatedBalance,
         balance: ownBalance,
         hasTransferFromDefaultThisMonth: hasTransferFromDefaultThisMonth || false,
+        hasTransferFromParentThisMonth: hasTransferFromParentThisMonth || false,
         parent: bank.parent,
         children: childrenWithBalances,
         ownBalance: isParent ? ownBalance : undefined,

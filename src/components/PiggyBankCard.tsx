@@ -36,12 +36,14 @@ interface PiggyBankCardProps {
     calculatedBalance: number;
     isDefault: boolean;
     hasTransferFromDefaultThisMonth?: boolean;
+    hasTransferFromParentThisMonth?: boolean;
     isParent?: boolean;
     isChild?: boolean;
     totalBalance?: number;
     ownBalance?: number;
     childrenTotal?: number;
     parentId?: string | null;
+    parent?: { id: string; name: string } | null;
   };
 }
 
@@ -74,14 +76,21 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
   
   const isGoalDueDateValid = goalDueDate && goalDueDate > new Date();
   const isGoalNotReached = piggyBank.goal && balance < piggyBank.goal;
-  const hasNoTransferThisMonth = !piggyBank.hasTransferFromDefaultThisMonth;
   
-  // Find default bank and check if it has enough balance
-  const defaultBank = piggyBanks?.find(bank => bank.isDefault);
-  const defaultBankBalance = defaultBank 
-    ? (defaultBank.currentBalance !== defaultBank.calculatedBalance 
-        ? defaultBank.currentBalance 
-        : defaultBank.calculatedBalance)
+  // Determine source bank for hint: use parent if child, otherwise use default
+  const sourceBank = piggyBank.isChild && piggyBank.parent
+    ? piggyBanks?.find(bank => bank.id === piggyBank.parent?.id)
+    : piggyBanks?.find(bank => bank.isDefault);
+  
+  const hasNoTransferThisMonth = piggyBank.isChild && piggyBank.parent
+    ? !piggyBank.hasTransferFromParentThisMonth
+    : !piggyBank.hasTransferFromDefaultThisMonth;
+  
+  // Get source bank balance
+  const sourceBankBalance = sourceBank 
+    ? (sourceBank.currentBalance !== sourceBank.calculatedBalance 
+        ? sourceBank.currentBalance 
+        : sourceBank.calculatedBalance)
     : 0;
   
   // Calculate suggested monthly amount
@@ -93,9 +102,9 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
     : 0;
   const suggestedAmount = remainingMonths > 0 ? remainingAmount / remainingMonths : 0;
   
-  // Check if default bank has enough money for the suggested amount
-  const hasEnoughMoneyInDefaultBank = defaultBank && suggestedAmount > 0 
-    ? defaultBankBalance >= suggestedAmount 
+  // Check if source bank has enough money for the suggested amount
+  const hasEnoughMoneyInSourceBank = sourceBank && suggestedAmount > 0 
+    ? sourceBankBalance >= suggestedAmount 
     : false;
   
   const shouldShowHint = Boolean(
@@ -103,7 +112,7 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
     isGoalNotReached && 
     isGoalDueDateValid && 
     hasNoTransferThisMonth &&
-    hasEnoughMoneyInDefaultBank
+    hasEnoughMoneyInSourceBank
   );
 
   const handleDelete = async () => {
@@ -251,7 +260,7 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
         sourcePiggyBank={piggyBank}
       />
 
-      {shouldShowHint && piggyBank.goal && goalDueDate && (
+      {shouldShowHint && piggyBank.goal && goalDueDate && sourceBank && (
         <GoalHintDialog
           isOpen={isHintDialogOpen}
           onClose={() => setIsHintDialogOpen(false)}
@@ -262,6 +271,7 @@ export function PiggyBankCard({ piggyBank }: PiggyBankCardProps) {
             currentBalance: balance,
             goalDueDate: goalDueDate,
           }}
+          sourceBankId={sourceBank.id}
         />
       )}
     </>

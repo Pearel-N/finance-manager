@@ -11,6 +11,7 @@ export type PiggyBankWithCalculations = PiggyBank & {
   calculatedBalance: number;
   balance: number;
   hasTransferFromDefaultThisMonth?: boolean;
+  hasTransferFromParentThisMonth?: boolean;
   transactions: Pick<Transaction, 'id' | 'amount' | 'type' | 'date' | 'note'>[];
   parent?: { id: string; name: string } | null;
   children?: Array<{ id: string; name: string; calculatedBalance: number }>;
