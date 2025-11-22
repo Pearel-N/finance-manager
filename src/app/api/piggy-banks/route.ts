@@ -380,7 +380,11 @@ export async function DELETE(request: Request) {
         userId: user.id
       },
       include: {
-        transactions: true,
+        transactions: {
+          include: {
+            category: true
+          }
+        },
         children: {
           select: {
             id: true,
@@ -401,11 +405,28 @@ export async function DELETE(request: Request) {
       }, { status: 400 });
     }
 
-    // Prevent deletion if it has transactions
-    if (existingPiggyBank.transactions.length > 0) {
+    // Check if there are non-system transactions
+    const nonSystemTransactions = existingPiggyBank.transactions.filter(
+      transaction => transaction.category.name !== 'System'
+    );
+
+    // Prevent deletion if it has non-system transactions
+    if (nonSystemTransactions.length > 0) {
       return NextResponse.json({ 
         error: "Cannot delete piggy bank with existing transactions" 
       }, { status: 400 });
+    }
+
+    // Delete system transactions first (if any)
+    if (existingPiggyBank.transactions.length > 0) {
+      await prisma.transaction.deleteMany({
+        where: {
+          piggyBankId: id,
+          category: {
+            name: 'System'
+          }
+        }
+      });
     }
 
     await prisma.piggyBank.delete({
