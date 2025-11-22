@@ -1,15 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { User } from "@supabase/supabase-js";
+import { Menu } from "lucide-react";
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
@@ -38,6 +41,10 @@ export default function Header() {
 
   const isActive = (path: string) => pathname === path;
 
+  const handleLinkClick = () => {
+    setMobileMenuOpen(false);
+  };
+
   if (loading) {
     return (
       <header className="border-b bg-background">
@@ -62,8 +69,8 @@ export default function Header() {
             Finance Manager
           </Link>
 
-          {/* Navigation */}
-          <nav className="flex items-center space-x-6">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-6">
             {user ? (
               // Authenticated user navigation
               <>
@@ -119,6 +126,88 @@ export default function Header() {
               </div>
             )}
           </nav>
+
+          {/* Mobile Navigation */}
+          <div className="flex md:hidden">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader>
+                  <SheetTitle>Navigation</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col space-y-4 mt-6">
+                  {user ? (
+                    // Authenticated user navigation
+                    <>
+                      <Link
+                        href="/dashboard"
+                        onClick={handleLinkClick}
+                        className={`text-sm font-medium transition-colors hover:text-primary ${
+                          isActive("/dashboard")
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Home
+                      </Link>
+                      <Link
+                        href="/transactions"
+                        onClick={handleLinkClick}
+                        className={`text-sm font-medium transition-colors hover:text-primary ${
+                          isActive("/transactions")
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Transactions
+                      </Link>
+                      <Link
+                        href="/profile"
+                        onClick={handleLinkClick}
+                        className={`text-sm font-medium transition-colors hover:text-primary ${
+                          isActive("/profile") 
+                            ? "text-primary" 
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Profile
+                      </Link>
+                    </>
+                  ) : (
+                    // Unauthenticated user navigation
+                    <div className="flex flex-col space-y-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          handleLinkClick();
+                          router.push("/auth/login");
+                        }}
+                        className="w-full"
+                      >
+                        Login
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          handleLinkClick();
+                          router.push("/auth/signup");
+                        }}
+                        className="w-full"
+                      >
+                        Signup
+                      </Button>
+                    </div>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </header>
