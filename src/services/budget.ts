@@ -104,9 +104,12 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
 
   // Calculate balance at start of today by subtracting today's transactions from current balance
   // This is used for calculating the "initial" daily budget that the progress bar shows
-  const todayBalanceChange = todayTransactions.reduce((sum, transaction) => {
-    return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
-  }, 0);
+  // Exclude system transactions (excludeFromDailySpent) from this calculation so they don't affect initial budget
+  const todayBalanceChange = todayTransactions
+    .filter(t => !t.excludeFromDailySpent) // Exclude system transactions
+    .reduce((sum, transaction) => {
+      return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
+    }, 0);
   const balanceAtStartOfDay = defaultBalance - todayBalanceChange;
 
   // Calculate weeks and days remaining
