@@ -39,7 +39,15 @@ export default function Header() {
     getUser();
   }, [pathname, supabase.auth]);
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/dashboard/piggy-banks") {
+      return pathname === path || pathname.startsWith("/dashboard/piggy-banks");
+    }
+    if (path === "/dashboard") {
+      return pathname === path;
+    }
+    return pathname === path;
+  };
 
   const handleLinkClick = () => {
     setMobileMenuOpen(false);
@@ -84,6 +92,16 @@ export default function Header() {
                     }`}
                   >
                     Home
+                  </Link>
+                  <Link
+                    href="/dashboard/piggy-banks"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive("/dashboard/piggy-banks")
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Piggy Banks
                   </Link>
                   <Link
                     href="/transactions"
@@ -154,6 +172,17 @@ export default function Header() {
                         }`}
                       >
                         Home
+                      </Link>
+                      <Link
+                        href="/dashboard/piggy-banks"
+                        onClick={handleLinkClick}
+                        className={`text-sm font-medium transition-colors hover:text-primary ${
+                          isActive("/dashboard/piggy-banks")
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Piggy Banks
                       </Link>
                       <Link
                         href="/transactions"
