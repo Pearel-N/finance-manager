@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String?
-  currency     String?       @default("INR")
-  transactions Transaction[]
-  categories   Category[]
-  piggyBanks   PiggyBank[]
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  name                  String?
+  currency              String?                @default("INR")
+  transactions          Transaction[]
+  categories            Category[]
+  piggyBanks            PiggyBank[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model Category {
-  id           String        @id @default(uuid())
-  name         String
-  userId       String
-  user         User          @relation(fields: [userId], references: [id])
-  transactions Transaction[]
+  id                    String                 @id @default(uuid())
+  name                  String
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id])
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model Transaction {
@@ -41,16 +43,34 @@ model Transaction {
 }
 
 model PiggyBank {
-  id             String        @id @default(uuid())
-  name           String
-  goal           Float?
-  goalDueDate    DateTime?
-  currentBalance Float         @default(0)
-  isDefault      Boolean       @default(false)
-  userId         String
-  user           User          @relation(fields: [userId], references: [id])
-  transactions   Transaction[]
-  parentId       String?
-  parent         PiggyBank?    @relation("PiggyBankParent", fields: [parentId], references: [id], onDelete: SetNull)
-  children       PiggyBank[]   @relation("PiggyBankParent")
+  id                    String                 @id @default(uuid())
+  name                  String
+  goal                  Float?
+  goalDueDate           DateTime?
+  currentBalance        Float                  @default(0)
+  isDefault             Boolean                @default(false)
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id])
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+  parentId              String?
+  parent                PiggyBank?             @relation("PiggyBankParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children              PiggyBank[]            @relation("PiggyBankParent")
+}
+
+model RecurringTransaction {
+  id          String     @id @default(uuid())
+  amount      Float
+  type        String // "income" | "expense"
+  frequency   String // "daily" | "weekly" | "monthly" | "yearly"
+  nextDate    DateTime
+  note        String?
+  categoryId  String
+  category    Category   @relation(fields: [categoryId], references: [id])
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  piggyBankId String?
+  piggyBank   PiggyBank? @relation(fields: [piggyBankId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }

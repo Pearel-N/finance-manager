@@ -104,6 +104,16 @@ export default function Header() {
                     Piggy Banks
                   </Link>
                   <Link
+                    href="/dashboard/recurring"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive("/dashboard/recurring")
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Recurring
+                  </Link>
+                  <Link
                     href="/transactions"
                     className={`text-sm font-medium transition-colors hover:text-primary ${
                       isActive("/transactions")
@@ -183,6 +193,17 @@ export default function Header() {
                         }`}
                       >
                         Piggy Banks
+                      </Link>
+                      <Link
+                        href="/dashboard/recurring"
+                        onClick={handleLinkClick}
+                        className={`text-sm font-medium transition-colors hover:text-primary ${
+                          isActive("/dashboard/recurring")
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Recurring
                       </Link>
                       <Link
                         href="/transactions"
