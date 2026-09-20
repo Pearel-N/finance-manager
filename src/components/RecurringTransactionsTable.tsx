@@ -88,7 +88,7 @@ export default function RecurringTransactionsTable() {
           amount: Number(editData.amount),
           type: editData.type,
           frequency: editData.frequency,
-          nextDate: new Date(editData.nextDate),
+          nextDate: new Date(editData.nextDate).toISOString(),
           categoryId: editData.categoryId,
           note: editData.note || null,
         },

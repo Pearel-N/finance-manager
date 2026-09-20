@@ -6,9 +6,9 @@ export interface RecurringTransaction {
   type: 'income' | 'expense';
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
   nextDate: string;
-  note?: string;
+  note?: string | null;
   categoryId: string;
-  piggyBankId?: string;
+  piggyBankId?: string | null;
   userId: string;
   createdAt: string;
   updatedAt: string;

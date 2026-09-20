@@ -68,6 +68,10 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   }
 
   const defaultBalance = defaultPiggyBank.currentBalance;
+  // A budget is an allowance, so it can never be negative. If the bank is
+  // overdrawn there is nothing left to spend, which is 0, not a negative
+  // daily figure. The debt itself is still shown on the piggy bank card.
+  const spendableBalance = Math.max(0, defaultBalance);
   const now = new Date();
 
   // Get current period start dates
@@ -110,7 +114,7 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
     .reduce((sum, transaction) => {
       return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
     }, 0);
-  const balanceAtStartOfDay = defaultBalance - todayBalanceChange;
+  const balanceAtStartOfDay = Math.max(0, defaultBalance - todayBalanceChange);
 
   // Calculate weeks and days remaining
   const weeksRemaining = getWeeksRemainingInMonth(now);
@@ -132,10 +136,10 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   
   // Calculate available daily budget (current balance) - used for showing current available amount
   // This decreases when excluded transactions (like investments) reduce the bank balance
-  const dailyAvailable = daysRemaining > 0 ? defaultBalance / daysRemaining : defaultBalance;
+  const dailyAvailable = daysRemaining > 0 ? spendableBalance / daysRemaining : spendableBalance;
   
   // Weekly budget uses current balance
-  const weeklyAvailable = weeksRemaining > 0 ? defaultBalance / weeksRemaining : defaultBalance;
+  const weeklyAvailable = weeksRemaining > 0 ? spendableBalance / weeksRemaining : spendableBalance;
 
   return {
     weekly: {

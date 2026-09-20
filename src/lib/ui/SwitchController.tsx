@@ -2,21 +2,19 @@
 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { transactionSchema } from "@/utils/schema/transation";
-import { Control, useController } from "react-hook-form";
-import { z } from "zod";
+import { Control, FieldPath, FieldValues, useController } from "react-hook-form";
 
-interface SwitchControllerProps {
-  name: keyof z.infer<typeof transactionSchema>;
-  control: Control<z.infer<typeof transactionSchema>>;
+interface SwitchControllerProps<T extends FieldValues> {
+  name: FieldPath<T>;
+  control: Control<T>;
   label: string;
 }
 
-export const SwitchController = ({
+export const SwitchController = <T extends FieldValues>({
   name,
   control,
   label,
-}: SwitchControllerProps) => {
+}: SwitchControllerProps<T>) => {
   const { field } = useController({ name, control });
   return (
     <div className="flex items-center gap-2">
