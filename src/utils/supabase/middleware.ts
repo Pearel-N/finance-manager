@@ -6,11 +6,6 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  console.log("🔧 SUPABASE ENV CHECK:", {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL ? "✅ Set" : "❌ Missing",
-    key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ Set" : "❌ Missing",
-  });
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -42,18 +37,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  console.log("🔍 USER CHECK:", {
-    user: user ? `✅ ${user.email}` : "❌ No user",
-    pathname: request.nextUrl.pathname,
-    isDashboard: request.nextUrl.pathname.startsWith('/dashboard'),
-  });
-
   // Check if user is trying to access protected routes without being logged in
   if (
     !user &&
     (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/profile'))
   ) {
-    console.log("🚫 REDIRECTING: No user accessing protected route, redirecting to login");
     // no user trying to access protected route, redirect to login page
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'

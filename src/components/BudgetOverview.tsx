@@ -40,14 +40,6 @@ export default function BudgetOverview() {
     const remainingPercentage = initialBudget > 0 ? (Math.max(0, initialBudget - spent) / initialBudget) * 100 : 0;
     const excessAmount = isOverspent ? spent - initialBudget : 0;
     
-    // Debug logging (can be removed later)
-    console.log('Budget calculation:', {
-      spent,
-      initialBudget,
-      available,
-      progressPercentage,
-      remainingPercentage,
-    });
 
     return {
       spent,

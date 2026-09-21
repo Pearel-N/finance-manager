@@ -123,16 +123,6 @@ export async function calculateBudgets(userId: string): Promise<BudgetsResponse>
   // Calculate initial daily budget (at start of day) - used for progress bar
   const initialDailyBudget = daysRemaining > 0 ? balanceAtStartOfDay / daysRemaining : balanceAtStartOfDay;
 
-  // Debug logging
-  console.log('Budget calculation debug:', {
-    todayTransactionsCount: todayTransactions.length,
-    todayTransactions: todayTransactions,
-    todaySpent,
-    defaultBalance,
-    balanceAtStartOfDay,
-    daysRemaining,
-    initialDailyBudget,
-  });
   
   // Calculate available daily budget (current balance) - used for showing current available amount
   // This decreases when excluded transactions (like investments) reduce the bank balance
