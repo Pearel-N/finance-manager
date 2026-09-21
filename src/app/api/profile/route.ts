@@ -2,6 +2,19 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
+const profileSelect = {
+  id: true,
+  email: true,
+  name: true,
+  currency: true,
+  smsTokenHash: true,
+} as const;
+
+// Never send the token hash to the browser, only whether one exists.
+function toProfile({ smsTokenHash, ...rest }: { smsTokenHash: string | null; id: string; email: string; name: string | null; currency: string | null }) {
+  return { ...rest, hasSmsToken: smsTokenHash !== null };
+}
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -15,19 +28,14 @@ export async function GET() {
       where: {
         id: user.id
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        currency: true,
-      }
+      select: profileSelect
     });
 
     if (!profile) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(profile);
+    return NextResponse.json(toProfile(profile));
   } catch (error) {
     console.error("GET /api/profile error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -66,15 +74,10 @@ export async function PATCH(request: Request) {
         id: user.id
       },
       data: updateData,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        currency: true,
-      }
+      select: profileSelect
     });
 
-    return NextResponse.json(updatedProfile);
+    return NextResponse.json(toProfile(updatedProfile));
   } catch (error) {
     console.error("PATCH /api/profile error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

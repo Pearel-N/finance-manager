@@ -17,7 +17,9 @@ export const parsedSmsSchema = z.object({
   merchant: z
     .string()
     .nullable()
-    .describe("who the money went to or came from, if the SMS says"),
+    .describe(
+      "who the money went to or came from, as a readable name (Swiggy, not swiggy@icici), if the SMS says"
+    ),
   date: z
     .string()
     .nullable()

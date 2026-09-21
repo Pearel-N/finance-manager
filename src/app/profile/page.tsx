@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useProfile } from "@/hooks/queries/profile";
 import { useUpdateProfile, useUpdatePassword } from "@/hooks/mutation/profile";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { SmsTokenCard } from "@/components/SmsTokenCard";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency-utils";
 import { logout } from "@/app/auth/actions";
 import { useState, useEffect, Suspense } from "react";
@@ -271,6 +272,8 @@ function ProfileContent() {
           </form>
         </CardContent>
       </Card>
+
+      <SmsTokenCard hasToken={profile.hasSmsToken} />
 
       <Card>
         <CardHeader>

@@ -13,6 +13,7 @@ model User {
   email                 String                 @unique
   name                  String?
   currency              String?                @default("INR")
+  smsTokenHash          String?                @unique
   transactions          Transaction[]
   categories            Category[]
   piggyBanks            PiggyBank[]

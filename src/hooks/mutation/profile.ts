@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateProfile, updatePassword } from "@/services/profile";
+import { updateProfile, updatePassword, createSmsToken, revokeSmsToken } from "@/services/profile";
 import { PROFILE } from "@/hooks/queries/profile";
 
 export const useUpdateProfile = () => {
@@ -16,5 +16,27 @@ export const useUpdateProfile = () => {
 export const useUpdatePassword = () => {
   return useMutation({
     mutationFn: (data: { currentPassword: string; newPassword: string }) => updatePassword(data),
+  });
+};
+
+export const useCreateSmsToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createSmsToken,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE });
+    },
+  });
+};
+
+export const useRevokeSmsToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: revokeSmsToken,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE });
+    },
   });
 };

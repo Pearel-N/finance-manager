@@ -5,6 +5,7 @@ export interface UserProfile {
   email: string;
   name: string | null;
   currency: string | null;
+  hasSmsToken: boolean;
 }
 
 export const getProfile = async (): Promise<UserProfile> => {
@@ -19,4 +20,14 @@ export const updateProfile = async (data: { name?: string; currency?: string }):
 
 export const updatePassword = async (data: { currentPassword: string; newPassword: string }): Promise<void> => {
   await axios.post("/api/profile/password", data);
+};
+
+// Returns the plain token. This is the only time it is ever visible.
+export const createSmsToken = async (): Promise<{ token: string }> => {
+  const response = await axios.post("/api/profile/sms-token");
+  return response.data;
+};
+
+export const revokeSmsToken = async (): Promise<void> => {
+  await axios.delete("/api/profile/sms-token");
 };
