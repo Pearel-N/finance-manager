@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { hashSmsToken } from "@/lib/sms-token";
+import { hashSmsToken, fingerprintSms } from "@/lib/sms-token";
 import { parseSms, FALLBACK_CATEGORY } from "@/lib/sms-parser";
 import { calculateBudgets } from "@/services/budget";
 import { formatCurrency } from "@/lib/currency-utils";
@@ -13,6 +13,11 @@ import { formatCurrency } from "@/lib/currency-utils";
 const bodySchema = z.object({
   text: z.string().trim().min(1).max(1000),
 });
+
+// How far back to look for the same SMS. Long enough to catch an
+// automation firing twice, short enough that paying the same shop the
+// same amount again next week still counts as a real transaction.
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
@@ -48,7 +53,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Ask the AI. Pass the user's categories so it can pick one.
+    // 3. Has this exact SMS already been saved recently? Two automations
+    //    can match the same message, and iOS can fire one twice.
+    const smsHash = fingerprintSms(user.id, body.data.text);
+    const duplicate = await prisma.transaction.findFirst({
+      where: {
+        userId: user.id,
+        smsHash,
+        date: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
+      },
+      select: { id: true },
+    });
+
+    if (duplicate) {
+      return NextResponse.json({
+        status: "duplicate",
+        message: "Already saved, skipped.",
+      });
+    }
+
+    // 4. Ask the AI. Pass the user's categories so it can pick one.
     const categories = await prisma.category.findMany({
       where: { userId: user.id, NOT: { name: "System" } },
       select: { id: true, name: true },
@@ -63,7 +87,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Work out the category, piggy bank and date.
+    // 5. Work out the category, piggy bank and date.
     const categoryId =
       categories.find((c) => c.name === parsed.category)?.id ??
       (await getOrCreateFallbackCategory(user.id));
@@ -76,7 +100,7 @@ export async function POST(request: Request) {
     const date = pickDate(parsed.date);
     const note = parsed.merchant ?? "Imported from SMS";
 
-    // 5. Save the transaction and update the bank balance together, so one
+    // 6. Save the transaction and update the bank balance together, so one
     //    cannot happen without the other.
     const balanceChange = parsed.type === "income" ? parsed.amount : -parsed.amount;
 
@@ -90,6 +114,7 @@ export async function POST(request: Request) {
           categoryId,
           userId: user.id,
           piggyBankId: defaultBank?.id ?? null,
+          smsHash,
         },
         include: { category: { select: { name: true } } },
       }),

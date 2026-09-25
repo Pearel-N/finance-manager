@@ -15,3 +15,12 @@ export function generateSmsToken(): { token: string; hash: string } {
   const token = PREFIX + randomBytes(32).toString("base64url");
   return { token, hash: hashSmsToken(token) };
 }
+
+// Fingerprint of one SMS, used to spot the same message arriving twice.
+// The user id is mixed in so two people who get an identical bank message
+// do not collide. Whitespace and case are ignored so trivial differences
+// still count as the same message. The raw SMS is never stored.
+export function fingerprintSms(userId: string, text: string): string {
+  const normalised = text.trim().toLowerCase().replace(/\s+/g, " ");
+  return createHash("sha256").update(`${userId}:${normalised}`).digest("hex");
+}

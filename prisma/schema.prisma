@@ -42,6 +42,10 @@ model Transaction {
   piggyBankId           String?
   piggyBank             PiggyBank? @relation(fields: [piggyBankId], references: [id])
   excludeFromDailySpent Boolean    @default(false)
+  // Fingerprint of the SMS this came from, used to reject duplicates.
+  smsHash               String?
+
+  @@index([userId, smsHash, date])
 }
 
 model PiggyBank {

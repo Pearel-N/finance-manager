@@ -1,7 +1,8 @@
 import { Transaction } from "@prisma/client";
 import axios from "axios";
 
-type CreateTransactionData = Omit<Transaction, 'id' | 'userId'> & {
+// smsHash is set by the SMS webhook only, never by the UI.
+type CreateTransactionData = Omit<Transaction, 'id' | 'userId' | 'smsHash'> & {
   piggyBankId?: string | null;
 };
 
