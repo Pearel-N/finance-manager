@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashSmsToken } from "@/lib/sms-token";
 import { parseSms, FALLBACK_CATEGORY } from "@/lib/sms-parser";
+import { calculateBudgets } from "@/services/budget";
+import { formatCurrency } from "@/lib/currency-utils";
 
 // Webhook for bank SMS forwarded from a phone.
 // Auth is the user's SMS token, sent as:  Authorization: Bearer fm_sms_...
@@ -19,22 +21,31 @@ export async function POST(request: Request) {
     const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
 
     if (!token) {
-      return NextResponse.json({ error: "Missing token" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Missing token", message: "No token sent. Check the Authorization header." },
+        { status: 401 }
+      );
     }
 
     const user = await prisma.user.findUnique({
       where: { smsTokenHash: hashSmsToken(token) },
-      select: { id: true },
+      select: { id: true, currency: true },
     });
 
     if (!user) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid token", message: "Token not recognised. Generate a new one in Profile." },
+        { status: 401 }
+      );
     }
 
     // 2. Is the body what we expect?
     const body = bodySchema.safeParse(await request.json().catch(() => null));
     if (!body.success) {
-      return NextResponse.json({ error: 'Body must be JSON like { "text": "..." }' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Bad body", message: "The message could not be read." },
+        { status: 400 }
+      );
     }
 
     // 3. Ask the AI. Pass the user's categories so it can pick one.
@@ -46,7 +57,10 @@ export async function POST(request: Request) {
     const parsed = await parseSms(body.data.text, categories.map((c) => c.name));
 
     if (!parsed.isTransaction || !parsed.type || !parsed.amount || parsed.amount <= 0) {
-      return NextResponse.json({ status: "ignored", reason: "not a transaction" });
+      return NextResponse.json({
+        status: "ignored",
+        message: "Not a transaction, nothing saved.",
+      });
     }
 
     // 4. Work out the category, piggy bank and date.
@@ -92,6 +106,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         status: "saved",
+        message: await buildMessage(
+          user.id,
+          user.currency ?? "INR",
+          parsed.type,
+          parsed.amount,
+          note,
+          transaction.category.name
+        ),
         transaction: {
           id: transaction.id,
           type: transaction.type,
@@ -105,7 +127,36 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("POST /api/sms error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error", message: "Something went wrong, nothing was saved." },
+      { status: 500 }
+    );
+  }
+}
+
+// A one line summary for the phone notification, e.g.
+// "Spent Rs.75.00 on Metro (Travel). Rs.300.00 left today."
+async function buildMessage(
+  userId: string,
+  currency: string,
+  type: "income" | "expense",
+  amount: number,
+  note: string,
+  categoryName: string
+): Promise<string> {
+  const verb = type === "expense" ? "Spent" : "Received";
+  const preposition = type === "expense" ? "on" : "from";
+  const head = `${verb} ${formatCurrency(amount, currency)} ${preposition} ${note} (${categoryName}).`;
+
+  // The remaining budget is a nice-to-have. If it cannot be worked out,
+  // still tell the user what was saved.
+  try {
+    const budgets = await calculateBudgets(userId);
+    const left = Math.max(0, budgets.daily.available - (budgets.daily.spent ?? 0));
+    return `${head} ${formatCurrency(left, currency)} left today.`;
+  } catch (error) {
+    console.error("SMS summary: could not calculate budget", error);
+    return head;
   }
 }
 
