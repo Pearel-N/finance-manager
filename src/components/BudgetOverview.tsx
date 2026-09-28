@@ -18,7 +18,7 @@ const CIRCULAR_PROGRESS_SIZE = 160;
 const CIRCULAR_PROGRESS_STROKE_WIDTH = 10;
 
 export default function BudgetOverview() {
-  const { data, isLoading, error } = useBudgets();
+  const { data, isLoading, error, dataUpdatedAt } = useBudgets();
   const { data: profile } = useProfile();
   const currency = profile?.currency || DEFAULT_CURRENCY;
 
@@ -101,6 +101,7 @@ export default function BudgetOverview() {
             <CircularProgress 
               value={progressPercentage}
               remaining={remainingPercentage}
+              animationKey={dataUpdatedAt}
               size={CIRCULAR_PROGRESS_SIZE}
               strokeWidth={CIRCULAR_PROGRESS_STROKE_WIDTH}
             />
