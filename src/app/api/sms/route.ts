@@ -177,8 +177,7 @@ async function buildMessage(
   // still tell the user what was saved.
   try {
     const budgets = await calculateBudgets(userId);
-    const left = Math.max(0, budgets.daily.available - (budgets.daily.spent ?? 0));
-    return `${head} ${formatCurrency(left, currency)} left today.`;
+    return `${head} ${formatCurrency(budgets.daily.remaining, currency)} left today.`;
   } catch (error) {
     console.error("SMS summary: could not calculate budget", error);
     return head;

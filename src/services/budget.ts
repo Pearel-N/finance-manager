@@ -1,17 +1,27 @@
 import axios from "axios";
 import { prisma } from "@/lib/prisma";
 
-export type BudgetData = {
-  periodType: 'week' | 'day';
-  available: number;
+export type DailyBudget = {
+  /** What you could spend today, fixed when the day began. */
+  budget: number;
+  /** What you have spent today. */
+  spent: number;
+  /** budget - spent, never below zero. */
+  remaining: number;
+  /** True when spent is larger than budget. */
+  isOverspent: boolean;
   periodStartDate: Date;
-  spent?: number;
-  initialBudget?: number; // Initial budget at start of day (for progress calculation)
+};
+
+export type WeeklyBudget = {
+  /** What you could spend this week, based on the balance right now. */
+  budget: number;
+  periodStartDate: Date;
 };
 
 export type BudgetsResponse = {
-  weekly: BudgetData;
-  daily: BudgetData;
+  weekly: WeeklyBudget;
+  daily: DailyBudget;
 };
 
 // Get week start date (Monday)
@@ -53,97 +63,76 @@ export const getBudgets = async (): Promise<BudgetsResponse> => {
   return response.data;
 };
 
-// Server-side function to calculate budgets
+/**
+ * Works out what the user can spend today and this week.
+ *
+ * The idea in one line: take what is in the default piggy bank, spread it
+ * evenly over the days left in the month, and subtract what has been spent
+ * today.
+ *
+ * The daily budget is fixed for the day. It is worked out from the balance
+ * as it was when the day began, NOT the balance right now, because the
+ * balance right now already has today's spending taken out of it. Using the
+ * current balance and then subtracting today's spending would count that
+ * spending twice.
+ */
 export async function calculateBudgets(userId: string): Promise<BudgetsResponse> {
-  // Get default piggy bank
   const defaultPiggyBank = await prisma.piggyBank.findFirst({
-    where: {
-      userId,
-      isDefault: true,
-    },
+    where: { userId, isDefault: true },
   });
 
   if (!defaultPiggyBank) {
     throw new Error("No default piggy bank found");
   }
 
-  const defaultBalance = defaultPiggyBank.currentBalance;
-  // A budget is an allowance, so it can never be negative. If the bank is
-  // overdrawn there is nothing left to spend, which is 0, not a negative
-  // daily figure. The debt itself is still shown on the piggy bank card.
-  const spendableBalance = Math.max(0, defaultBalance);
   const now = new Date();
-
-  // Get current period start dates
-  const weekStart = getWeekStart(now);
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-  // Calculate today's date range
-  // Use start of day in local timezone, but ensure we capture all transactions for today
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  
-  // Get all today's transactions to calculate balance at start of day
-  const todayTransactions = await prisma.transaction.findMany({
+  const todaysTransactions = await prisma.transaction.findMany({
     where: {
       userId,
       piggyBankId: defaultPiggyBank.id,
-      date: {
-        gte: todayStart,
-        lte: todayEnd,
-      },
+      date: { gte: dayStart, lte: dayEnd },
     },
-    select: {
-      amount: true,
-      type: true,
-      excludeFromDailySpent: true,
-    },
+    select: { amount: true, type: true, excludeFromDailySpent: true },
   });
 
-  // Calculate today's spending (expenses only, excluding transactions marked to exclude)
-  // System transactions are excluded via excludeFromDailySpent flag
-  const todaySpent = todayTransactions
-    .filter(t => t.type === 'expense' && !t.excludeFromDailySpent)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  // Transactions marked "exclude from daily budget" (investments, transfers)
+  // still move the balance, but they are not spending, so they are left out
+  // of both sums here. That means they shrink today's budget rather than
+  // showing up as money spent.
+  const countsTowardsToday = todaysTransactions.filter((t) => !t.excludeFromDailySpent);
 
-  // Calculate balance at start of today by subtracting today's transactions from current balance
-  // This is used for calculating the "initial" daily budget that the progress bar shows
-  // Exclude system transactions (excludeFromDailySpent) from this calculation so they don't affect initial budget
-  const todayBalanceChange = todayTransactions
-    .filter(t => !t.excludeFromDailySpent) // Exclude system transactions
-    .reduce((sum, transaction) => {
-      return sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount);
-    }, 0);
-  const balanceAtStartOfDay = Math.max(0, defaultBalance - todayBalanceChange);
+  const spentToday = countsTowardsToday
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  // Calculate weeks and days remaining
-  const weeksRemaining = getWeeksRemainingInMonth(now);
-  const daysRemaining = getDaysRemainingInMonth(now);
+  const netChangeToday = countsTowardsToday.reduce(
+    (sum, t) => sum + (t.type === "income" ? t.amount : -t.amount),
+    0
+  );
 
-  // Calculate initial daily budget (at start of day) - used for progress bar
-  const initialDailyBudget = daysRemaining > 0 ? balanceAtStartOfDay / daysRemaining : balanceAtStartOfDay;
+  // Undo today's transactions to get back to this morning's balance.
+  const startOfDayBalance = Math.max(0, defaultPiggyBank.currentBalance - netChangeToday);
+  const spendableNow = Math.max(0, defaultPiggyBank.currentBalance);
 
-  
-  // Calculate available daily budget (current balance) - used for showing current available amount
-  // This decreases when excluded transactions (like investments) reduce the bank balance
-  const dailyAvailable = daysRemaining > 0 ? spendableBalance / daysRemaining : spendableBalance;
-  
-  // Weekly budget uses current balance
-  const weeklyAvailable = weeksRemaining > 0 ? spendableBalance / weeksRemaining : spendableBalance;
+  const daysLeft = getDaysRemainingInMonth(now);
+  const weeksLeft = getWeeksRemainingInMonth(now);
+
+  const dailyBudget = startOfDayBalance / daysLeft;
 
   return {
-    weekly: {
-      periodType: 'week',
-      available: weeklyAvailable,
-      periodStartDate: weekStart,
-    },
     daily: {
-      periodType: 'day',
-      available: dailyAvailable,
+      budget: dailyBudget,
+      spent: spentToday,
+      remaining: Math.max(0, dailyBudget - spentToday),
+      isOverspent: spentToday > dailyBudget,
       periodStartDate: dayStart,
-      spent: todaySpent,
-      initialBudget: initialDailyBudget, // Budget at start of day for progress calculation
+    },
+    weekly: {
+      budget: spendableNow / weeksLeft,
+      periodStartDate: getWeekStart(now),
     },
   };
 }
-

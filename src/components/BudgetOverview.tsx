@@ -25,31 +25,21 @@ export default function BudgetOverview() {
   const budgetData = useMemo(() => {
     if (!data?.daily) return null;
 
-    const dailyBudget = data.daily;
-    const spent = Number(dailyBudget.spent ?? 0);
-    const available = Number(dailyBudget.available);
-    // Use initialBudget for progress calculation (budget at start of day)
-    // This ensures progress bar updates correctly when expenses are added
-    // If initialBudget is not provided, use available as fallback
-    const initialBudget = Number(dailyBudget.initialBudget ?? available);
-    const remaining = Math.max(0, available - spent);
-    const isOverspent = spent > initialBudget;
-    
-    // Calculate progress percentage against initial budget (can exceed 100% when overspent)
-    const progressPercentage = initialBudget > 0 ? (spent / initialBudget) * 100 : 0;
-    const remainingPercentage = initialBudget > 0 ? (Math.max(0, initialBudget - spent) / initialBudget) * 100 : 0;
-    const excessAmount = isOverspent ? spent - initialBudget : 0;
-    
+    const { budget, spent, remaining, isOverspent } = data.daily;
+
+    // How full the ring is. Over budget, the red ring shows the overspend
+    // as a share of the budget, so spending double the budget fills it.
+    const spentPercentage = budget > 0 ? (spent / budget) * 100 : 0;
+    const remainingPercentage = budget > 0 ? (remaining / budget) * 100 : 0;
 
     return {
+      budget,
       spent,
-      available,
-      initialBudget,
       remaining,
       isOverspent,
-      progressPercentage,
+      overspentBy: Math.max(0, spent - budget),
+      spentPercentage,
       remainingPercentage,
-      excessAmount,
     };
   }, [data]);
 
@@ -78,14 +68,13 @@ export default function BudgetOverview() {
   };
 
   const {
+    budget,
     spent,
-    available,
-    initialBudget,
     remaining,
     isOverspent,
-    progressPercentage,
+    overspentBy,
+    spentPercentage,
     remainingPercentage,
-    excessAmount,
   } = budgetData;
 
   return (
@@ -99,7 +88,7 @@ export default function BudgetOverview() {
           {/* Circular Progress */}
           <div className="relative">
             <CircularProgress 
-              value={progressPercentage}
+              value={spentPercentage}
               remaining={remainingPercentage}
               animationKey={dataUpdatedAt}
               size={CIRCULAR_PROGRESS_SIZE}
@@ -110,16 +99,16 @@ export default function BudgetOverview() {
               <div className={`text-2xl font-bold ${isOverspent ? 'text-destructive' : 'text-foreground'}`}>
                 {formatCurrencyAmount(remaining)}
               </div>
-              <div className="text-xs text-muted-foreground">of {formatCurrencyAmount(available)}</div>
+              <div className="text-xs text-muted-foreground">of {formatCurrencyAmount(budget)}</div>
             </div>
           </div>
 
           {/* Budget Details */}
           <div className="w-full space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Initial Budget</span>
+              <span className="text-muted-foreground">Today&apos;s Budget</span>
               <span className="text-lg font-semibold">
-                {formatCurrencyAmount(initialBudget)}
+                {formatCurrencyAmount(budget)}
               </span>
             </div>
             <div className="flex justify-between items-center border-t pt-3">
@@ -130,7 +119,7 @@ export default function BudgetOverview() {
             </div>
             {isOverspent && (
               <div className="text-sm text-destructive text-center pt-2">
-                You&apos;ve exceeded your daily budget by {formatCurrencyAmount(excessAmount)}
+                You&apos;ve exceeded your daily budget by {formatCurrencyAmount(overspentBy)}
               </div>
             )}
           </div>
