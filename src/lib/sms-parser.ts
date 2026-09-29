@@ -61,6 +61,10 @@ export async function parseSms(text: string, categoryNames: string[]): Promise<P
     system: instructions,
     prompt: text,
     output: Output.object({ schema: buildSchema(names) }),
+    // Free tier models return "overloaded" and rate limit errors under
+    // load. The SDK retries those with a growing delay; it does not retry
+    // errors that would fail again anyway, such as a bad API key.
+    maxRetries: 3,
   });
   return output;
 }

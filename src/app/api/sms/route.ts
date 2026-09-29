@@ -10,6 +10,9 @@ import { formatCurrency } from "@/lib/currency-utils";
 // Auth is the user's SMS token, sent as:  Authorization: Bearer fm_sms_...
 // Body:  { "text": "<the SMS>" }
 
+// This route waits on a model call, so it needs longer than the default.
+export const maxDuration = 60;
+
 const bodySchema = z.object({
   text: z.string().trim().min(1).max(1000),
 });
@@ -151,12 +154,25 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/sms error:", error);
+    // Log a single readable line. Logs on the current plan expire within
+    // the hour, so it has to be scannable, not a stack to dig through.
+    console.error(`POST /api/sms failed: ${describeError(error)}`);
     return NextResponse.json(
-      { error: "Internal server error", message: "Something went wrong, nothing was saved." },
+      {
+        error: "Internal server error",
+        message: "Could not read that SMS. Nothing was saved, try running it again.",
+      },
       { status: 500 }
     );
   }
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause instanceof Error ? ` (caused by ${error.cause.message})` : "";
+    return `${error.name}: ${error.message}${cause}`;
+  }
+  return String(error);
 }
 
 // A one line summary for the phone notification, e.g.
