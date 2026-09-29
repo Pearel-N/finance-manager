@@ -5,6 +5,16 @@ import { z } from "zod";
 // Used when none of the user's categories fits the SMS.
 export const FALLBACK_CATEGORY = "Uncategorized";
 
+// Tried in order. If the first model is busy, the second usually is not:
+// a lighter model runs on separate capacity. Both answer this task well,
+// since it is short text in, small object out.
+const MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite"] as const;
+
+// Attempts per model, on top of the first try. Kept low on purpose: when a
+// model reports high demand, waiting out four attempts just keeps the phone
+// hanging before failing anyway. Better to move on to the next model.
+const RETRIES_PER_MODEL = 1;
+
 // The shape we want back from the AI. Every field is filled in, even for
 // messages that are not transactions (those get null), so the result is
 // always predictable.
@@ -55,16 +65,25 @@ For the category, pick from the allowed list only. Use "${FALLBACK_CATEGORY}" ra
 export async function parseSms(text: string, categoryNames: string[]): Promise<ParsedSms> {
   // Remove duplicates and the fallback name, so the enum has unique values.
   const names = [...new Set(categoryNames)].filter((name) => name !== FALLBACK_CATEGORY);
+  const schema = buildSchema(names);
 
-  const { output } = await generateText({
-    model: google("gemini-3.6-flash"),
-    system: instructions,
-    prompt: text,
-    output: Output.object({ schema: buildSchema(names) }),
-    // Free tier models return "overloaded" and rate limit errors under
-    // load. The SDK retries those with a growing delay; it does not retry
-    // errors that would fail again anyway, such as a bad API key.
-    maxRetries: 3,
-  });
-  return output;
+  let lastError: unknown;
+
+  for (const modelId of MODELS) {
+    try {
+      const { output } = await generateText({
+        model: google(modelId),
+        system: instructions,
+        prompt: text,
+        output: Output.object({ schema }),
+        maxRetries: RETRIES_PER_MODEL,
+      });
+      return output;
+    } catch (error) {
+      lastError = error;
+      console.warn(`parseSms: ${modelId} failed, trying the next model`);
+    }
+  }
+
+  throw lastError;
 }
