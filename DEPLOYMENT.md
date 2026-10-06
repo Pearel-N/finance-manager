@@ -1,192 +1,144 @@
-# Deploy Finance Manager to Vercel
+# Deploying Finance Manager
 
-This guide will help you deploy your Finance Manager application to Vercel so you can share it with your friends.
+The app is a Next.js project using Supabase for sign in and Postgres,
+Prisma for database access, and Gemini (through the AI SDK) to read bank
+SMS. It is deployed on Vercel.
 
-## Prerequisites
+## Environment variables
 
-1. A [Vercel account](https://vercel.com/signup) (free tier works great)
-2. A [Supabase account](https://supabase.com) for authentication
-3. Your code pushed to GitHub (recommended) or ready to deploy via CLI
+Five are needed everywhere, locally and on Vercel. A sixth is production only.
 
-## Step 1: Prepare Your Database
+| Variable | What it is | Where to find it |
+|---|---|---|
+| `DATABASE_URL` | Transaction pooler connection string, port **6543**. Used by the app at runtime. Keep `?pgbouncer=true&connection_limit=1` on the end. | Supabase, **Connect** button, Transaction pooler |
+| `DIRECT_URL` | Session pooler connection string, port **5432**. Used by Prisma for migrations only. | Supabase, **Connect** button, Session pooler |
+| `NEXT_PUBLIC_SUPABASE_URL` | Project URL, like `https://abcd.supabase.co` | Supabase, Project Settings, API Keys |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The anon / publishable key. Newer projects show `sb_publishable_...`. Safe in the browser. | Supabase, Project Settings, API Keys |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini key for the SMS parser. Note this name never appears in the code; `@ai-sdk/google` reads it from the environment by itself. | Google AI Studio, **Get API key** |
+| `CRON_SECRET` | Production only. Protects the daily recurring transactions job. Vercel sends it automatically once the variable exists. | Make one: `openssl rand -hex 32` |
 
-You need a PostgreSQL database. The easiest option is to use Supabase's built-in database:
+### Why two connection strings
 
-1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
-2. Create a new project or use an existing one
-3. Go to **Settings** → **Database**
-4. **IMPORTANT for Vercel/Serverless**: You must use the **Connection Pooler** URL, not the direct connection!
+The app runs as short lived serverless functions, which need the **pooler**
+so they share a small set of database connections. Prisma cannot create or
+change tables through that pooler, so migrations use `DIRECT_URL` instead.
+`prisma/schema.prisma` wires this up with `directUrl`.
 
-### Finding the Connection Pooler URL:
+Never use the `service_role` or secret Supabase key. The app does not need it.
 
-1. In Supabase Dashboard → **Settings** → **Database**
-2. Scroll down to **Connection Pooling** section
-3. Select **Session mode** or **Transaction mode** (Transaction mode is recommended for Prisma)
-4. Copy the connection string - it should look like:
-   ```
-   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
-   ```
-   OR (newer format):
-   ```
-   postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres?pgbouncer=true&connection_limit=1
-   ```
-   
-   **Important:** Make sure to add `&connection_limit=1` at the end of the connection string. This is required for Prisma to work with Supabase's connection pooler.
+## Running locally
 
-**Why Connection Pooler?**
-- Direct connections (`db.xxx.supabase.co:5432`) don't work reliably with serverless functions
-- Connection pooler is designed for serverless environments like Vercel
-- It handles connection limits and scaling automatically
+1. Create `.env` in the project root with the first five variables above.
+   It is gitignored.
+2. Install and set up:
 
-## Step 2: Deploy to Vercel
-
-### Option A: Deploy via GitHub (Recommended)
-
-1. Push your code to GitHub (if not already done):
    ```bash
-   git add .
-   git commit -m "Prepare for deployment"
-   git push origin main
+   npm install
+   npx prisma migrate deploy
+   npx prisma generate
+   npm run dev
    ```
 
-2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-3. Click **Add New...** → **Project**
-4. Import your GitHub repository
-5. Vercel will auto-detect Next.js settings - click **Deploy**
-6. Wait for the first deployment to complete (it may fail initially without environment variables - that's okay)
+3. Open http://localhost:3000 and sign up.
 
-## Step 3: Set Environment Variables in Vercel
+Use `migrate deploy`, not `migrate dev`, if your local `.env` points at the
+same Supabase project as production. `migrate dev` can offer to reset the
+database, which would delete real data. `migrate deploy` only applies
+migration files.
 
-You **must** set these environment variables for your app to work:
+## Deploying to Vercel
 
-1. Go to your project in [Vercel Dashboard](https://vercel.com/dashboard)
-2. Click **Settings** → **Environment Variables**
-3. Add the following variables:
+1. Push to GitHub.
+2. In Vercel, **Add New**, **Project**, and import the repository. Next.js is
+   detected automatically.
+3. **Before clicking Deploy**, open Environment Variables and add all six,
+   ticking Production, Preview and Development for each.
+4. Deploy.
 
-| Variable Name | Value | Where to Find |
-|--------------|-------|---------------|
-| `DATABASE_URL` | **Connection Pooler URL** (see Step 1) | Supabase Dashboard → Settings → Database → Connection Pooling → Transaction mode → Connection string |
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Supabase Dashboard → Settings → API → Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key | Supabase Dashboard → Settings → API → anon public key |
+### Migrations run during the build
 
-**⚠️ Critical:** Make sure to use the **Connection Pooler** URL, not the direct connection URL! The pooler URL contains `pooler.supabase.com` in the hostname.
+`package.json` has:
 
-**Important:** Set these for **Production**, **Preview**, and **Development** environments (you can select all three when adding each variable).
-
-### Alternative: Set via Vercel CLI
-
-```bash
-vercel env add DATABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
+```json
+"build": "prisma migrate deploy && next build"
 ```
 
-## Step 4: Run Initial Database Migrations
+So every deploy applies any new migration files before building. Commit the
+folders under `prisma/migrations/`; a migration that is not committed never
+reaches production.
 
-**For the first deployment only**, you need to set up your database schema manually:
+### Region
 
-1. **Set your production database URL:**
-   ```bash
-   export DATABASE_URL="your-production-database-url-from-supabase"
-   ```
+`vercel.json` pins the app to `bom1` (Mumbai) to sit beside a Supabase
+project in `ap-south-1`. If you move the database to another region, change
+this to match, or every query crosses the world and back.
 
-2. **Push your Prisma schema to the database:**
-   ```bash
-   npx prisma db push
-   ```
-   
-   This will create all the tables (User, Category, Transaction, PiggyBank, Budget) in your database.
+## Supabase authentication URLs
 
-3. **Generate Prisma Client** (if needed):
-   ```bash
-   npx prisma generate
-   ```
+Supabase puts links in its emails, so it needs to know your deployed URL.
+Go to **Authentication**, then **URL Configuration**:
 
-**Note:** After the initial setup, migrations will run automatically during each Vercel deployment. The build script includes `prisma migrate deploy`, which applies all pending migrations from your `prisma/migrations` folder.
+- **Site URL:** `https://<your-app>.vercel.app`
+- **Redirect URLs:**
+  - `https://<your-app>.vercel.app/**`
+  - `https://<project>-*-<team>.vercel.app/**` for preview deploys
+  - `http://localhost:3000/**` for local development
 
-## Step 5: Configure Supabase Redirect URLs
+Note where the `*` goes in the preview pattern. Vercel preview URLs look like
+`myapp-abc123-myteam.vercel.app`, so the wildcard belongs between the project
+name and the team name.
 
-Your Supabase authentication needs to know about your Vercel domain:
+## Verifying a deployment
 
-1. Go to your Supabase Dashboard → **Authentication** → **URL Configuration**
-2. Add your Vercel URLs to **Redirect URLs**:
-   - `https://your-app.vercel.app/**` (replace `your-app` with your actual Vercel project name)
-   - `https://your-app.vercel.app/auth/callback` (if you have a callback route)
-3. Add the same to **Site URL** if needed
+1. Sign up, then log in.
+2. Add a transaction and check the dashboard figures move.
+3. Confirm `/api/cron/process-recurring` returns `{"error":"Unauthorized"}`
+   when called from a browser. That means `CRON_SECRET` is working.
 
-## Step 6: Redeploy Your Application
+## SMS import
 
-After setting environment variables:
+Each user generates their own token on the Profile page. The database stores
+only a hash of it, so it is shown once and cannot be recovered.
 
-1. Go to Vercel Dashboard → Your Project → **Deployments**
-2. Click the three dots (⋯) on the latest deployment → **Redeploy**
-3. Or simply push a new commit to trigger automatic deployment:
-   ```bash
-   git commit --allow-empty -m "Trigger redeploy"
-   git push
-   ```
+The phone sends bank SMS to `POST /api/sms`:
 
-## Step 7: Verify Your Deployment
+```
+Authorization: Bearer fm_sms_...
+Content-Type: application/json
 
-1. Visit your deployment URL (e.g., `your-app.vercel.app`)
-2. Test the signup/login functionality
-3. Try creating a transaction
-4. Test other features to ensure everything works
+{ "text": "<the SMS>" }
+```
+
+On iPhone, a Shortcut does the request and a Personal Automation runs it when
+a message containing words like `debited`, `credited` or `spent` arrives.
+
+Duplicates are rejected: the route stores a hash of each message on the
+transaction and ignores the same message arriving again within 10 minutes.
 
 ## Troubleshooting
 
-### Build Fails During Deployment
-- **Check build logs** in Vercel Dashboard → Deployments → Click on failed deployment
-- **Verify environment variables** are set correctly (especially `DATABASE_URL`)
-- **Ensure Prisma Client generates** - the `postinstall` script should handle this automatically
+**"Can't reach database server at db.xxx.supabase.co:5432"**
+You are using the direct connection instead of the pooler. The host should
+contain `pooler.supabase.com`.
 
-### Database Connection Issues
+**Prisma errors during a Vercel build**
+Usually a missing `DIRECT_URL`. The build runs `prisma migrate deploy`, which
+needs it.
 
-**Error: "Can't reach database server at `db.xxx.supabase.co:5432`"**
-- This means you're using the direct connection URL instead of the connection pooler URL
-- **Solution**: Use the Connection Pooler URL from Supabase Dashboard → Settings → Database → Connection Pooling
-- The pooler URL should have `pooler.supabase.com` in the hostname, not `db.xxx.supabase.co`
-- Connection pooler URL format: `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1`
-- **Critical:** You must add `&connection_limit=1` to your connection string for Prisma compatibility
+**"This model is no longer available to new users" (404)**
+Google retired the model named in `src/lib/sms-parser.ts`. List what your key
+can use and pick a current one:
 
-**Other Database Issues:**
-- Verify your `DATABASE_URL` is correct and includes the password
-- Make sure you're using **Transaction mode** for the connection pooler (Prisma works best with this)
-- Some database providers require SSL - if you get SSL errors, add `?sslmode=require` to the end of your connection string (before `?pgbouncer=true`)
-- Check that your database allows connections from external IPs (Supabase does this by default)
+```bash
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_GENERATIVE_AI_API_KEY" | grep '"name"'
+```
 
-### Authentication Not Working
-- Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are correct
-- Check Supabase Dashboard → Authentication → URL Configuration
-- Make sure your Vercel domain is added to allowed redirect URLs
-- Look for CORS errors in browser console
+**"This model is currently experiencing high demand"**
+A temporary Gemini capacity problem, not a bug. The parser already tries a
+second, lighter model before giving up, and the phone is told nothing was
+saved so the message can be sent again.
 
-### Application Errors After Deployment
-- Check Vercel function logs: Project → **Deployments** → Click deployment → **Functions** tab
-- Verify all environment variables are set for the correct environment (Production/Preview)
-- Test locally with the same environment variables to isolate issues
-
-## Next Steps
-
-Once your app is deployed and working:
-
-1. **Share your Vercel URL** - Your app will be live at `your-app.vercel.app`
-2. **Add a custom domain** (optional): Vercel Settings → Domains
-3. **Monitor usage**: Check Vercel Dashboard for analytics and usage stats
-4. **Set up error monitoring** (optional): Consider [Sentry](https://sentry.io) or similar services
-
-## Useful Vercel Features
-
-- **Automatic deployments**: Every push to your main branch triggers a new deployment
-- **Preview deployments**: Every pull request gets its own preview URL
-- **Environment variables**: Separate variables for Production, Preview, and Development
-- **Analytics**: Monitor your app's performance in the Vercel dashboard
-
-## Support Resources
-
-- [Vercel Documentation](https://vercel.com/docs)
-- [Next.js Deployment Guide](https://nextjs.org/docs/app/building-your-application/deploying)
-- [Supabase Documentation](https://supabase.com/docs)
-- Check your deployment logs in Vercel Dashboard for specific error messages
-
-Your Finance Manager app is now ready to share with friends! 🚀
+**Reading production logs**
+Vercel, project, **Logs**. On the Hobby plan only the last hour is available,
+and longer ranges need a paid plan. Filter by console level Error to find
+failures quickly.
